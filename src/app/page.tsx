@@ -98,19 +98,20 @@ export default function HomePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1500px] px-4 pb-0 sm:px-6 lg:px-8">
-      <section className="grid border-x border-concrete/14 bg-ink-deep/88 lg:grid-cols-[minmax(0,2.18fr)_minmax(330px,0.96fr)]">
-        <div className="relative min-h-[360px] overflow-hidden border-b border-concrete/18 lg:border-r lg:border-b-0">
-          <Image src="/csn-central.jpg" alt="Escritorio central da CSN em Volta Redonda" fill priority className="object-cover object-center" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(9,12,14,0.92)_0%,rgba(12,16,18,0.68)_42%,rgba(13,18,22,0.16)_100%)]" />
+    <div className="mx-auto w-full max-w-[1500px] px-3 pb-0 sm:px-5 lg:px-8">
+      <section className="grid overflow-hidden border-x border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(20,27,29,0.35))] shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-xl lg:grid-cols-[minmax(0,2.18fr)_minmax(330px,0.96fr)]">
+        <div className="relative min-h-[330px] overflow-hidden border-b border-white/14 lg:min-h-[300px] lg:border-r lg:border-b-0">
+          <Image src="/csn-central.jpg" alt="Escritorio central da CSN em Volta Redonda" fill priority className="object-cover object-[62%_52%] saturate-[0.85] contrast-[1.06]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,9,10,0.88)_0%,rgba(12,17,19,0.58)_42%,rgba(20,31,36,0.14)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_22%,rgba(255,255,255,0.13),transparent_22%),linear-gradient(135deg,rgba(169,188,196,0.17),transparent_38%)] mix-blend-screen" />
           <div className="absolute inset-0 tt-noise opacity-60" />
-          <div className="relative z-10 flex min-h-[360px] max-w-3xl flex-col justify-center px-6 py-10 sm:px-10 lg:px-12">
+          <div className="relative z-10 flex min-h-[330px] max-w-3xl flex-col justify-center px-6 py-9 sm:px-10 lg:min-h-[300px] lg:px-12 lg:py-8">
             <p className="mb-4 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Observatorio popular urbano</p>
-            <h1 className="font-display text-[3.05rem] uppercase leading-[0.98] tracking-[0.07em] text-paper sm:text-[3.55rem] lg:text-[3.65rem] xl:text-[3.85rem]">
+            <h1 className="font-display text-[2.85rem] uppercase leading-[0.98] tracking-[0.07em] text-paper drop-shadow-[0_6px_18px_rgba(0,0,0,0.42)] sm:text-[3.35rem] lg:text-[3.12rem] xl:text-[3.38rem]">
               Mapear. Documentar. Agir.
               <span className="block">O territorio e nosso.</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-sm font-medium leading-6 text-paper/82 sm:text-base">
+            <p className="mt-5 max-w-2xl text-sm font-medium leading-6 text-paper/84 sm:text-base lg:max-w-xl">
               Mapeamos, documentamos e ativamos a disputa social sobre os imoveis ligados a CSN em Volta Redonda. Memoria, prova
               documental, leitura territorial e acao coletiva.
             </p>
@@ -125,15 +126,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        <aside className="tt-rule-grid bg-ink-alt/42">
-          <div className="border-b border-concrete/14 px-6 py-6 lg:px-7">
+        <aside className="tt-rule-grid bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(11,14,15,0.44))] backdrop-blur-xl">
+          <div className="px-6 py-6 lg:px-7">
             <p className="mb-5 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Situacao geral</p>
-            <div className="grid grid-cols-2 border border-concrete/10">
+            <div className="grid grid-cols-2 overflow-hidden tt-liquid">
               {situation.map((item, index) => {
                 const Icon = item.icon;
 
                 return (
-                  <div key={item.label} className={cn("min-h-24 border-concrete/10 p-5", index % 2 === 0 ? "border-r" : "", index < 2 ? "border-b" : "")}>
+                  <div key={item.label} className={cn("min-h-24 border-white/10 p-5", index % 2 === 0 ? "border-r" : "", index < 2 ? "border-b" : "")}>
                     <div className="flex items-center gap-4">
                       <Icon className={cn("h-8 w-8", item.alert ? "text-rust-light" : "text-glass/78")} strokeWidth={1.8} />
                       <div>
@@ -152,9 +153,9 @@ export default function HomePage() {
         </aside>
       </section>
 
-      <section className="grid border-x border-t border-concrete/14 bg-ink-deep/92 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <section className="grid border-x border-t border-white/14 bg-[linear-gradient(180deg,rgba(13,20,22,0.84),rgba(8,11,12,0.92))] lg:grid-cols-[minmax(0,1fr)_300px]">
         <div>
-          <div className="flex flex-wrap items-center gap-3 border-b border-concrete/14 px-5 py-4">
+          <div className="flex flex-wrap items-center gap-3 border-b border-white/14 bg-white/[0.035] px-5 py-3.5 backdrop-blur-xl">
             <button
               type="button"
               onClick={clearFilters}
@@ -187,10 +188,11 @@ export default function HomePage() {
             </button>
           </div>
 
-          <div className="relative min-h-[270px] overflow-hidden border-b border-concrete/14 bg-[#111719]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_43%_50%,rgba(47,79,89,0.42),transparent_15%),linear-gradient(35deg,transparent_0_48%,rgba(130,140,134,0.18)_49%_50%,transparent_51%),linear-gradient(150deg,transparent_0_58%,rgba(130,140,134,0.14)_59%_60%,transparent_61%)]" />
-            <div className="absolute inset-0 tt-map-grid opacity-80" />
-            <div className="absolute left-5 top-24 z-10 grid border border-concrete/22 bg-black/55 text-paper">
+          <div className="relative min-h-[295px] overflow-hidden border-b border-white/14 bg-[#101718]">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_47%_46%,rgba(31,83,95,0.62),transparent_16%),radial-gradient(circle_at_26%_30%,rgba(180,192,187,0.12),transparent_19%),linear-gradient(35deg,transparent_0_48%,rgba(210,222,217,0.2)_49%_50%,transparent_51%),linear-gradient(150deg,transparent_0_58%,rgba(165,180,177,0.15)_59%_60%,transparent_61%)]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent_42%,rgba(0,0,0,0.18))]" />
+            <div className="absolute inset-0 tt-map-grid opacity-90" />
+            <div className="absolute left-5 top-24 z-10 grid border border-white/24 bg-black/35 text-paper shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-lg">
               <button className="h-7 w-7 border-b border-concrete/20 text-lg">+</button>
               <button className="h-7 w-7 text-lg">-</button>
             </div>
@@ -220,12 +222,12 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="grid border-b border-concrete/14 bg-concrete/10 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid border-b border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(169,188,196,0.055))] backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-5">
             {stats.map((item) => {
               const Icon = item.icon;
 
               return (
-                <div key={item.label} className="flex min-h-24 items-center gap-4 border-r border-concrete/12 px-5 py-4 last:border-r-0">
+                <div key={item.label} className="flex min-h-24 items-center gap-4 border-r border-white/12 px-5 py-4 last:border-r-0">
                   <Icon className="h-8 w-8 text-paper/52" strokeWidth={1.7} />
                   <div>
                     <p className="font-display text-4xl leading-none tracking-[0.08em] text-paper">{item.value}</p>
@@ -238,7 +240,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        <aside className="border-l border-concrete/14 bg-[#181b1c]/94 px-6 py-5">
+        <aside className="border-l border-white/14 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,17,18,0.58))] px-6 py-5 backdrop-blur-2xl">
           <p className="mb-4 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Legenda de criticidade</p>
           <div className="space-y-3 border-b border-concrete/12 pb-5">
             {[
@@ -274,8 +276,8 @@ export default function HomePage() {
         </aside>
       </section>
 
-      <section className="grid border-x border-t border-concrete/14 bg-[#121516] lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.9fr)]">
-        <div className="border-b border-concrete/14 px-5 py-5 lg:border-r lg:border-b-0">
+      <section className="grid border-x border-t border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(10,13,14,0.88))] lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.9fr)]">
+        <div className="border-b border-white/14 px-5 py-5 lg:border-r lg:border-b-0">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-[12px] font-black uppercase tracking-[0.24em] text-signal">Imoveis em destaque</p>
             <Link href="/imoveis" className="text-[10px] font-black uppercase tracking-[0.2em] text-paper/70 hover:text-signal">
@@ -284,7 +286,7 @@ export default function HomePage() {
           </div>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             {featured.map((item, index) => (
-              <article key={item.title} className="border border-concrete/14 bg-ink-deep/80">
+              <article key={item.title} className="tt-liquid-soft overflow-hidden transition hover:border-white/22 hover:bg-white/10">
                 <div className="relative h-32 overflow-hidden">
                   <Image src="/csn-central.jpg" alt="" fill className="object-cover" sizes="(min-width: 1280px) 25vw, 50vw" />
                   <div className="absolute inset-0 bg-black/35 grayscale" />
@@ -362,7 +364,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <footer className="grid items-center gap-4 border border-concrete/14 bg-concrete/10 px-6 py-5 text-[11px] uppercase tracking-[0.16em] text-paper/54 sm:grid-cols-[auto_1fr_auto]">
+      <footer className="grid items-center gap-4 border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(169,188,196,0.045))] px-6 py-5 text-[11px] uppercase tracking-[0.16em] text-paper/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl sm:grid-cols-[auto_1fr_auto]">
         <span className="inline-flex h-11 w-16 items-center justify-center border border-signal/65 text-signal">
           <Eye className="h-5 w-5" />
         </span>

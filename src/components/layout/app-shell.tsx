@@ -34,17 +34,21 @@ export function AppShell({ children }: AppShellProps) {
       return pathname === "/";
     }
 
+    if (href === "/mapa" && pathname === "/") {
+      return true;
+    }
+
     return pathname === href || pathname.startsWith(`${href}/`);
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#080a0b]">
+    <div className="relative flex min-h-screen flex-col overflow-hidden bg-[#07090a]">
       <div className="tt-shell pointer-events-none absolute inset-0" />
-      <header className="relative z-10 border-b border-concrete/16 bg-[#111516]/92 backdrop-blur-md">
-        <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-stretch lg:justify-between lg:gap-6 lg:px-8 lg:py-0">
-          <div className="flex items-center py-2 lg:py-3">
+      <header className="relative z-10 border-b border-white/14 bg-[linear-gradient(135deg,rgba(22,27,28,0.78),rgba(9,12,13,0.6))] shadow-[0_1px_0_rgba(255,255,255,0.08),0_18px_60px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
+        <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-stretch lg:justify-between lg:gap-6 lg:px-10 lg:py-0">
+          <div className="flex items-center py-1.5 lg:py-2.5">
             <Link href="/" className="inline-flex items-center gap-3 text-paper">
-              <span className="inline-flex h-12 w-12 items-center justify-center border border-signal/75 bg-black/25 text-xs font-black uppercase tracking-[0.22em] text-signal shadow-[inset_0_0_0_1px_rgba(242,244,239,0.08)]">
+              <span className="inline-flex h-12 w-12 items-center justify-center border border-signal/75 bg-[linear-gradient(145deg,rgba(255,215,106,0.16),rgba(255,255,255,0.04))] text-xs font-black uppercase tracking-[0.22em] text-signal shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_0_28px_rgba(233,173,18,0.1)] backdrop-blur-xl">
                 TT
               </span>
               <span>
@@ -62,10 +66,10 @@ export function AppShell({ children }: AppShellProps) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex min-w-24 items-center justify-center border-l border-concrete/12 px-5 transition last:border-r",
+                  "flex min-w-24 items-center justify-center border-l border-white/10 px-5 transition last:border-r",
                   isActive(item.href)
-                    ? "border-b-2 border-b-signal bg-concrete/7 text-signal"
-                    : "hover:bg-concrete/7 hover:text-paper",
+                    ? "border-b-2 border-b-signal bg-white/8 text-signal shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]"
+                    : "hover:bg-white/7 hover:text-paper",
                 )}
               >
                 {item.label}
