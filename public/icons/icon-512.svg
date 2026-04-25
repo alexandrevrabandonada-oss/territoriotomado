@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Territorio Tomado icon">
+  <rect width="512" height="512" fill="#0f0b09"/>
+  <rect x="56" y="56" width="400" height="400" fill="none" stroke="#f2b300" stroke-width="24"/>
+  <path d="M126 322L256 114L386 322H304V378H208V322Z" fill="#8f4d27"/>
+  <rect x="224" y="210" width="64" height="168" fill="#f2eee6"/>
+  <rect x="194" y="170" width="124" height="24" fill="#f2b300"/>
+</svg>

@@ -9,7 +9,7 @@ Fundacao visual e estrutural do app, sem logica pesada.
 - shell global com topbar e navegacao
 - estetica VR Abandonada com brutalismo limpo
 - home editorial com hero, destaques e chamada para acao
-- placeholders de pagina para mapa, agir e admin
+- paginas principais, mapa real e admin editorial minimo
 - lista mockada de imoveis
 - detalhe mockado de imovel
 - design system inicial com tokens, botoes, badges, cards e estados vazios
@@ -32,6 +32,9 @@ Fundacao visual e estrutural do app, sem logica pesada.
 - /agir
 - /admin
 - /admin/imoveis
+- /admin/imoveis/novo
+- /admin/imoveis/[id]
+- /admin/contribuicoes
 - /enviar
 
 ## Estrutura
@@ -47,6 +50,8 @@ Fundacao visual e estrutural do app, sem logica pesada.
 ## Componentes-base do Tijolo 01
 
 - AppShell
+- InternalPageHeader
+- MetricCard
 - SectionHeader
 - PropertyCard
 - Badge
@@ -55,10 +60,18 @@ Fundacao visual e estrutural do app, sem logica pesada.
 ## Convencoes de hardening
 
 - `AppShell` e a shell unica da aplicacao. Cabecalho e rodape vivem nele.
-- `SectionHeader` e o unico cabecalho de secao permitido nas rotas ativas.
+- `InternalPageHeader` e o cabecalho padrao das rotas internas e deve manter conteudo util cedo na dobra.
+- `SectionHeader` fica para secoes internas e para a home, que segue mais monumental.
+- `MetricCard` e o padrao para contadores compactos. Evitar mosaicos grandes de metricas simples.
 - `Badge` e o unico componente de selo/status. Variacoes de status e criticidade usam os mapeamentos do proprio arquivo.
 - Componentes fora do fluxo principal nao sao apagados sem necessidade: ficam em `src/components/staging`.
-- A rota `/mapa` segue como placeholder visual ate o proximo tijolo. Experimentos de mapa ficam isolados em staging.
+- A rota `/mapa` ja usa mapa real com dados publicados. Experimentos de mapa fora do fluxo principal continuam em `src/components/staging`.
+- A rota `/agir` nasce das `property_actions` publicadas de cada imovel e puxa o CTA a partir da ficha.
+- A rota `/enviar` grava contribuicoes moderadas em `property_reports` com `moderation_status = pendente`.
+- A moderacao em `/admin/contribuicoes` pode aprovar para tres destinos: relato publico, timeline ou acervo de midia. As decisoes preservam a origem em `property_reports` e nos itens criados.
+- A rota `/admin/imoveis/[id]` concentra ficha, galeria e documentos do imovel em blocos editoriais simples.
+- A mídia real usa os buckets `property-images` e `property-docs`.
+- A gramatica visual e de UX do produto esta documentada em `docs/ux-system.md`.
 
 ## Entidades do MVP
 
@@ -88,6 +101,7 @@ Copie `.env.example` para `.env.local` e preencha:
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 ```
 
 ## Vibe coding iterativo

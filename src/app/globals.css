@@ -1,0 +1,274 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #3b474f;
+  --background-alt: #46545d;
+  --foreground: #f2f4ef;
+  --muted: #b7c0c3;
+  --signal: #e9ad12;
+  --signal-light: #ffd76a;
+  --rust: #8f5944;
+  --rust-light: #c48b70;
+  --steel: #7d909b;
+  --glass: #a9bcc4;
+  --concrete: #d3d9d5;
+  --panel: rgba(242, 244, 239, 0.105);
+  --panel-strong: rgba(242, 244, 239, 0.15);
+  --panel-solid: rgba(70, 84, 93, 0.82);
+  --line: rgba(242, 244, 239, 0.18);
+  --line-strong: rgba(211, 217, 213, 0.28);
+  --shadow-panel: inset 0 1px 0 rgba(242, 244, 239, 0.08), 0 14px 34px rgba(39, 50, 58, 0.18);
+  --shadow-card: inset 0 1px 0 rgba(242, 244, 239, 0.06), 0 10px 24px rgba(39, 50, 58, 0.14);
+  --shadow-signal: 0 0 0 1px rgba(233, 173, 18, 0.28), 0 10px 24px rgba(233, 173, 18, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(211, 217, 213, 0.2), rgba(211, 217, 213, 0.04) 26%, transparent 58%),
+    radial-gradient(circle at top left, rgba(169, 188, 196, 0.22), transparent 24%),
+    radial-gradient(circle at 84% 14%, rgba(125, 144, 155, 0.24), transparent 30%),
+    linear-gradient(180deg, rgba(233, 173, 18, 0.055), transparent 15%),
+    var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(242, 244, 239, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(242, 244, 239, 0.045) 1px, transparent 1px),
+    repeating-linear-gradient(90deg, rgba(169, 188, 196, 0.06) 0, rgba(169, 188, 196, 0.06) 1px, transparent 1px, transparent 128px);
+  background-size: 64px 64px, 64px 64px, auto;
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.1));
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: rgba(242, 179, 0, 0.24);
+  color: var(--foreground);
+}
+
+select,
+input,
+textarea,
+button {
+  font: inherit;
+}
+
+@layer components {
+  .tt-shell {
+    background:
+      radial-gradient(circle at top left, rgba(169, 188, 196, 0.18), transparent 24%),
+      radial-gradient(circle at 85% 10%, rgba(211, 217, 213, 0.12), transparent 22%),
+      linear-gradient(180deg, rgba(233, 173, 18, 0.035), transparent 18%);
+  }
+
+  .tt-hero {
+    border: 1px solid var(--line-strong);
+    background:
+      linear-gradient(135deg, rgba(211, 217, 213, 0.14), rgba(169, 188, 196, 0.06)),
+      linear-gradient(180deg, rgba(233, 173, 18, 0.04), transparent 38%),
+      var(--panel-strong);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .tt-panel {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(242, 244, 239, 0.04), transparent),
+      var(--panel);
+    box-shadow: inset 0 1px 0 rgba(242, 244, 239, 0.06);
+  }
+
+  .tt-card {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(242, 244, 239, 0.035), transparent),
+      rgba(242, 244, 239, 0.095);
+    box-shadow: var(--shadow-card);
+  }
+
+  .tt-metric {
+    border: 1px solid rgba(211, 217, 213, 0.18);
+    background: rgba(211, 217, 213, 0.1);
+    box-shadow: inset 0 1px 0 rgba(169, 188, 196, 0.08);
+  }
+
+  .tt-chip {
+    border: 1px solid rgba(211, 217, 213, 0.18);
+    background: rgba(211, 217, 213, 0.08);
+  }
+
+  .tt-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: 0;
+    min-height: 2.75rem;
+    padding: 0.68rem 1.15rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    transition-property: color, background-color, border-color, box-shadow;
+    transition-duration: 150ms;
+  }
+
+  .tt-button-primary {
+    border: 1px solid rgba(255, 215, 106, 0.78);
+    background: var(--signal);
+    color: #27323a;
+    box-shadow: var(--shadow-signal);
+  }
+
+  .tt-button-primary:hover {
+    border-color: var(--signal-light);
+    background: var(--signal-light);
+  }
+
+  .tt-button-secondary {
+    border: 1px solid rgba(169, 188, 196, 0.46);
+    background:
+      linear-gradient(180deg, rgba(195, 208, 210, 0.08), transparent),
+      rgba(125, 144, 155, 0.22);
+    color: var(--foreground);
+  }
+
+  .tt-button-secondary:hover {
+    border-color: rgba(169, 188, 196, 0.55);
+    background: rgba(211, 217, 213, 0.18);
+  }
+
+  .tt-button-ghost {
+    border: 1px solid rgba(211, 217, 213, 0.12);
+    background: rgba(211, 217, 213, 0.045);
+    color: rgba(242, 244, 239, 0.76);
+  }
+
+  .tt-button-ghost:hover {
+    border-color: rgba(211, 217, 213, 0.16);
+    background: rgba(211, 217, 213, 0.08);
+    color: var(--foreground);
+  }
+
+  .tt-button-danger {
+    border: 1px solid rgba(196, 139, 112, 0.55);
+    background:
+      linear-gradient(180deg, rgba(143, 89, 68, 0.24), rgba(143, 89, 68, 0.14)),
+      rgba(70, 84, 93, 0.38);
+    color: #f2f4ef;
+  }
+
+  .tt-button-danger:hover {
+    border-color: rgba(233, 173, 18, 0.5);
+    background:
+      linear-gradient(180deg, rgba(143, 89, 68, 0.34), rgba(143, 89, 68, 0.18)),
+      rgba(70, 84, 93, 0.42);
+    color: var(--signal-light);
+  }
+
+  .tt-input {
+    width: 100%;
+    border: 1px solid rgba(211, 217, 213, 0.18);
+    background: rgba(70, 84, 93, 0.72);
+    color: var(--foreground);
+    outline: none;
+    transition: border-color 150ms ease;
+  }
+
+  .tt-input:focus {
+    border-color: var(--signal);
+  }
+
+  .tt-sidebar {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(242, 244, 239, 0.04), transparent),
+      rgba(242, 244, 239, 0.095);
+    box-shadow: inset 0 1px 0 rgba(242, 244, 239, 0.06);
+  }
+
+  .tt-surface {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(242, 244, 239, 0.035), transparent),
+      var(--panel);
+    box-shadow: inset 0 1px 0 rgba(242, 244, 239, 0.06);
+  }
+
+  .tt-surface-strong {
+    border: 1px solid var(--line-strong);
+    background:
+      linear-gradient(135deg, rgba(211, 217, 213, 0.1), rgba(169, 188, 196, 0.035)),
+      var(--panel-strong);
+    box-shadow: inset 0 1px 0 rgba(242, 244, 239, 0.08);
+  }
+
+  .tt-surface-solid {
+    border: 1px solid var(--line);
+    background:
+      linear-gradient(180deg, rgba(242, 244, 239, 0.045), transparent),
+      var(--panel-solid);
+    box-shadow: inset 0 1px 0 rgba(242, 244, 239, 0.07);
+  }
+
+  .tt-rule-grid {
+    background-image:
+      linear-gradient(rgba(242, 244, 239, 0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(242, 244, 239, 0.055) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+}
+
+.leaflet-container {
+  background: #d3d9d5;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.tt-map .leaflet-tile {
+  filter: grayscale(1) sepia(0.08) hue-rotate(168deg) saturate(0.9) contrast(0.96) brightness(0.96);
+}
+
+.tt-map .leaflet-control-zoom a {
+  border-radius: 0;
+  border-color: rgba(59, 71, 79, 0.24);
+  background: rgba(242, 244, 239, 0.92);
+  color: #27323a;
+}
+
+.tt-map .leaflet-control-attribution {
+  background: rgba(242, 244, 239, 0.82);
+  color: rgba(39, 50, 58, 0.72);
+}
+
+.tt-map .leaflet-control-attribution a {
+  color: #ffd469;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+  background: #f2f4ef;
+  color: #27323a;
+  border-radius: 0;
+}
