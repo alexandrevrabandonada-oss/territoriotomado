@@ -26,6 +26,9 @@ const defaultContext: PublicListingContext = {
   status: "todos",
   criticality: "todos",
   neighborhood: "todos",
+  readyForMap: "todos",
+  priorityReview: "todos",
+  locationStatus: "todos",
 };
 
 export function PropertyListShell({ properties, filterOptions, initialContext }: PropertyListShellProps) {
@@ -47,10 +50,25 @@ export function PropertyListShell({ properties, filterOptions, initialContext }:
           deferredContext.criticality === "todos" || property.criticality === deferredContext.criticality;
         const matchesNeighborhood =
           deferredContext.neighborhood === "todos" || property.neighborhoodId === deferredContext.neighborhood;
+        const matchesReady =
+          deferredContext.readyForMap === "todos" ||
+          (deferredContext.readyForMap === "sim" ? property.readyForMap : !property.readyForMap);
+        const matchesPriority =
+          deferredContext.priorityReview === "todos" || property.priorityReview === deferredContext.priorityReview;
+        const matchesLocation =
+          deferredContext.locationStatus === "todos" || property.locationStatus === deferredContext.locationStatus;
 
-        return matchesStatus && matchesCriticality && matchesNeighborhood;
+        return matchesStatus && matchesCriticality && matchesNeighborhood && matchesReady && matchesPriority && matchesLocation;
       }),
-    [deferredContext.criticality, deferredContext.neighborhood, deferredContext.status, properties],
+    [
+      deferredContext.criticality,
+      deferredContext.locationStatus,
+      deferredContext.neighborhood,
+      deferredContext.priorityReview,
+      deferredContext.readyForMap,
+      deferredContext.status,
+      properties,
+    ],
   );
 
   const orderedProperties = useMemo(() => {

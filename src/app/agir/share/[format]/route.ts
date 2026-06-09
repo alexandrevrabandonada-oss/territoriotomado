@@ -4,7 +4,7 @@ import { getPublishedActionFeed } from "@/lib/data/public-queries";
 import { getActionSharePhrase } from "@/lib/share-copy";
 import { ActionSharePack, type ShareVariant } from "@/lib/share-pack";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 type ShareFormat = "1x1" | "9x16";
 

@@ -4,7 +4,7 @@ import { getPublishedPropertyBundle } from "@/lib/data/public-queries";
 import { getPropertySharePhrase } from "@/lib/share-copy";
 import { PropertySharePack, type ShareVariant } from "@/lib/share-pack";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 type ShareFormat = "1x1" | "9x16";
 
@@ -38,6 +38,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ slu
     status: property.status,
     criticality: property.criticality,
     phrase: getPropertySharePhrase(property.status, property.criticality),
+    locationStatus: property.locationStatus,
+    priorityReview: property.priorityReview,
   };
 
   return new ImageResponse(createElement(PropertySharePack, { data, variant: config.variant }), {

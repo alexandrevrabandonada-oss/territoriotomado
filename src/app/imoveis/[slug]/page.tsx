@@ -86,7 +86,7 @@ export default async function PropertyDetailPage({ params, searchParams }: Prope
           <p className="text-[11px] uppercase tracking-[0.22em] text-signal">ficha publicada</p>
           <p className="text-sm uppercase tracking-[0.16em] text-paper/68">Memoria, prova, leitura territorial e acao organizadas na mesma ficha.</p>
         </div>
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <MetricCard label="documentos" value={documents.length} compact tone="blue" />
           <MetricCard label="imagens" value={images.length} compact tone="steel" />
           <MetricCard label="relatos" value={approvedReports} compact tone="yellow" />

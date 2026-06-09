@@ -33,6 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function BairrosPage() {
   const neighborhoods = await getPublishedNeighborhoodSummaries();
   const totalProperties = neighborhoods.reduce((sum, item) => sum + item.propertyCount, 0);
+  const totalReadyForMap = neighborhoods.reduce((sum, item) => sum + item.readyForMapCount, 0);
   const totalCritical = neighborhoods.reduce((sum, item) => sum + item.criticalPropertyCount, 0);
   const totalActions = neighborhoods.reduce((sum, item) => sum + item.openActionCount, 0);
 
@@ -46,12 +47,13 @@ export default async function BairrosPage() {
       >
         <SectionHeader
           eyebrow="unidade territorial"
-          title="Bairros"
-          description="Leitura por concentracao territorial, pressao e frente aberta, sem transformar a rota em dashboard autonomo."
+          title="Bairros como eixo de leitura"
+          description="Entre pelo bairro para entender concentracao, confianca territorial, prioridade de revisao e caminhos de acao antes da ficha fiscal."
           variant="compact"
         />
-        <div className="grid grid-cols-3 gap-2 sm:min-w-[320px]">
+        <div className="grid grid-cols-2 gap-2 sm:min-w-[390px] sm:grid-cols-4">
           <MetricCard label="imoveis" value={totalProperties} compact tone="steel" />
+          <MetricCard label="no mapa" value={totalReadyForMap} compact tone="blue" />
           <MetricCard label="criticos" value={totalCritical} compact tone={totalCritical > 0 ? "alert" : "default"} />
           <MetricCard label="acoes" value={totalActions} compact tone={totalActions > 0 ? "yellow" : "default"} />
         </div>
@@ -83,9 +85,9 @@ export default async function BairrosPage() {
                 <div className="space-y-2">
                   <h2 className="font-display text-2xl uppercase tracking-[0.08em] text-paper">{neighborhood.name}</h2>
                   <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em] text-paper/58">
-                    <span className="border border-concrete/14 bg-concrete/8 px-3 py-2">{neighborhood.openActionCount} frentes abertas</span>
-                    <span className="border border-concrete/14 bg-concrete/8 px-3 py-2">{neighborhood.proofPropertyCount} imoveis com prova</span>
-                    <span className="border border-concrete/14 bg-concrete/8 px-3 py-2">{neighborhood.publicDocumentCount} documentos publicos</span>
+                    <span className="tt-chip px-3 py-2">{neighborhood.readyForMapCount} prontos para mapa</span>
+                    <span className="tt-chip px-3 py-2">{neighborhood.priorityPropertyCount} prioritarios</span>
+                    <span className="tt-chip px-3 py-2">{neighborhood.openActionCount} acoes ligadas</span>
                   </div>
                 </div>
 
@@ -95,27 +97,31 @@ export default async function BairrosPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
-                    <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+                    <div className="tt-metric px-3 py-2.5">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">imoveis</p>
                       <p className="mt-2 font-display text-xl uppercase text-paper">{neighborhood.propertyCount}</p>
                     </div>
-                    <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+                    <div className="tt-metric px-3 py-2.5">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">criticos</p>
                       <p className="mt-2 font-display text-xl uppercase text-paper">{neighborhood.criticalPropertyCount}</p>
                     </div>
-                    <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">acoes</p>
-                      <p className="mt-2 font-display text-xl uppercase text-paper">{neighborhood.openActionCount}</p>
+                    <div className="tt-metric px-3 py-2.5">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">no mapa</p>
+                      <p className="mt-2 font-display text-xl uppercase text-paper">{neighborhood.readyForMapCount}</p>
                     </div>
-                    <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+                    <div className="tt-metric px-3 py-2.5">
                       <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">prioridade</p>
                       <p className="mt-2 font-display text-xl uppercase text-paper">{neighborhood.priorityPropertyCount}</p>
+                    </div>
+                    <div className="tt-metric px-3 py-2.5 sm:col-span-4 lg:col-span-2">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">acao ligada</p>
+                      <p className="mt-2 font-display text-xl uppercase text-paper">{neighborhood.openActionCount > 0 ? `${neighborhood.openActionCount} aberta` : "sem frente"}</p>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-col gap-2 border-t border-concrete/16 pt-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="mt-4 flex flex-col gap-2 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[11px] uppercase tracking-[0.18em] text-paper/48">
                   {neighborhood.priorityPropertyCount > 0 ? "territorio com pressao ativa" : "territorio em acompanhamento"}
                 </p>

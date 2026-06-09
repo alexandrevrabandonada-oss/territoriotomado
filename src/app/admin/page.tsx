@@ -4,6 +4,7 @@ import { PanelCard } from "@/components/ui/panel-card";
 import { SidebarPanel } from "@/components/ui/sidebar-panel";
 import { SectionHeader } from "@/components/ui/section-header";
 import { getAdminSummary } from "@/lib/data/admin-queries";
+import { getReviewOperationState } from "@/lib/data/admin-review";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ function getOperationalStateTone(value: number, priority = false): "alert" | "ye
 }
 
 export default async function AdminPage() {
-  const summary = await getAdminSummary();
+  const [summary, reviewState] = await Promise.all([getAdminSummary(), getReviewOperationState()]);
   const draftProperties = Math.max(summary.totalProperties - summary.publishedProperties, 0);
   const pendingItems = [
     {
@@ -57,6 +58,9 @@ export default async function AdminPage() {
           <ButtonLink href="/admin/contribuicoes" variant={summary.pendingReports > 0 ? "primary" : "secondary"} className="w-full text-xs sm:w-auto">
             Revisar pendencias
           </ButtonLink>
+          <ButtonLink href="/admin/revisao" variant={reviewState.metrics.pending > 0 ? "primary" : "secondary"} className="w-full text-xs sm:w-auto">
+            Operar revisao
+          </ButtonLink>
           <ButtonLink href="/admin/imoveis" variant="secondary" className="w-full text-xs sm:w-auto">
             Abrir acervo
           </ButtonLink>
@@ -67,7 +71,7 @@ export default async function AdminPage() {
         <MetricCard label="imoveis cadastrados" value={summary.totalProperties} compact tone="steel" description="base total do acervo" />
         <MetricCard label="imoveis publicados" value={summary.publishedProperties} compact tone="blue" description="visiveis no publico" />
         <MetricCard label="contribuicoes pendentes" value={summary.pendingReports} compact tone={summary.pendingReports > 0 ? "alert" : "default"} description="fila de moderacao" />
-        <MetricCard label="acoes ativas" value={summary.activeActions} compact tone="yellow" description="frentes publicadas" />
+        <MetricCard label="revisao de dados" value={reviewState.metrics.pending} compact tone={reviewState.metrics.pending > 0 ? "alert" : "default"} description={`${reviewState.metrics.progressPercent}% da fila fechada`} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -99,6 +103,27 @@ export default async function AdminPage() {
           </PanelCard>
 
           <div className="grid gap-4 lg:grid-cols-2">
+            <PanelCard
+              density="compact"
+              eyebrow="revisao prioritaria"
+              title="Fila de operacao cotidiana"
+              description="Ambiguidades de localizacao, pendencias de mapa, valor venal em revisao manual e prioridade alta entram numa fila propria."
+              actions={<ButtonLink href="/admin/revisao" variant={reviewState.metrics.pending > 0 ? "primary" : "secondary"} className="w-full text-xs sm:w-auto">Abrir revisao</ButtonLink>}
+            >
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">pendentes</p>
+                  <p className="mt-2 font-display text-xl uppercase text-paper">{reviewState.metrics.pending}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-paper/55">fecham ambiguidade e mapa</p>
+                </div>
+                <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">mapa melhorado</p>
+                  <p className="mt-2 font-display text-xl uppercase text-paper">{reviewState.metrics.readyForMapAfterReview}</p>
+                  <p className="mt-1 text-xs uppercase tracking-[0.14em] text-paper/55">com coordenada confirmada</p>
+                </div>
+              </div>
+            </PanelCard>
+
             <PanelCard
               density="compact"
               eyebrow="acervo"
@@ -186,6 +211,9 @@ export default async function AdminPage() {
               <ButtonLink href="/admin/contribuicoes" variant={summary.pendingReports > 0 ? "primary" : "secondary"} className="w-full">
                 Revisar contribuicoes
               </ButtonLink>
+              <ButtonLink href="/admin/revisao" variant={reviewState.metrics.pending > 0 ? "primary" : "secondary"} className="w-full">
+                Operar revisao de dados
+              </ButtonLink>
               <ButtonLink href="/enviar" variant="ghost" className="w-full">
                 Ver formulario publico
               </ButtonLink>
@@ -201,6 +229,10 @@ export default async function AdminPage() {
               <div className="border border-concrete/14 bg-ink-alt/42 p-3">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">moderacao</p>
                 <p className="mt-2 text-sm leading-6 text-paper/72">{summary.pendingReports > 0 ? "A fila pede decisao manual antes de qualquer publicacao." : "Sem contribuicoes pendentes neste momento."}</p>
+              </div>
+              <div className="border border-concrete/14 bg-ink-alt/42 p-3">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">revisao de base</p>
+                <p className="mt-2 text-sm leading-6 text-paper/72">{reviewState.metrics.pending > 0 ? `${reviewState.metrics.pending} itens ainda precisam fechar endereco, bairro, localizacao ou estimativa.` : "Fila de revisao prioritaria zerada."}</p>
               </div>
               <div className="border border-concrete/14 bg-ink-alt/42 p-3">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">estrutura</p>

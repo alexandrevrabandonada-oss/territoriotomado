@@ -58,6 +58,11 @@ function getBoolean(formData: FormData, key: string) {
   return getString(formData, key) === "on" || getString(formData, key) === "true";
 }
 
+function getOptionalEnum(formData: FormData, key: string, allowed: string[]) {
+  const value = getString(formData, key);
+  return value && allowed.includes(value) ? value : null;
+}
+
 function sanitizeFileName(fileName: string) {
   return fileName
     .normalize("NFD")
@@ -332,6 +337,7 @@ export async function savePropertyAction(formData: FormData) {
   const propertyId = getString(formData, "property_id");
   const title = getString(formData, "title");
   const slug = getString(formData, "slug");
+  const inscricaoImobiliaria = getString(formData, "inscricao_imobiliaria") || null;
   const address = getString(formData, "address");
   const neighborhoodId = getString(formData, "neighborhood_id");
   const propertyType = getString(formData, "property_type");
@@ -347,6 +353,10 @@ export async function savePropertyAction(formData: FormData) {
   const communityUrl = getString(formData, "community_url");
   const dossierUrl = getString(formData, "dossier_url");
   const externalReferenceUrl = getString(formData, "external_reference_url");
+  const locationStatusFinal = getOptionalEnum(formData, "localizacao_status_final", ["confirmada", "aproximada", "ambigua", "pendente"]);
+  const priorityReview = getOptionalEnum(formData, "prioridade_revisao", ["alta", "media", "baixa"]);
+  const readyForMapRaw = getString(formData, "pronto_para_mapa");
+  const readyForMap = readyForMapRaw === "" ? null : readyForMapRaw === "sim";
   const latitude = getNumber(formData, "latitude");
   const longitude = getNumber(formData, "longitude");
   const isPublic = getBoolean(formData, "is_public");
@@ -359,9 +369,10 @@ export async function savePropertyAction(formData: FormData) {
     .map((item) => item.trim())
     .filter(Boolean);
   const { data: currentProperty } = propertyId
-    ? await supabase.from("properties").select("slug").eq("id", propertyId).maybeSingle()
+    ? await supabase.from("properties").select("slug, inscricao_imobiliaria").eq("id", propertyId).maybeSingle()
     : { data: null };
   const previousSlug = currentProperty?.slug ?? null;
+  const previousInscricao = currentProperty?.inscricao_imobiliaria ?? null;
 
   if (!title || !slug || !address || !neighborhoodId || !propertyType || !currentStatus || !criticality || !excerpt || !description) {
     redirectWithError(target, "Preencha os campos obrigatorios.");
@@ -371,9 +382,10 @@ export async function savePropertyAction(formData: FormData) {
     redirectWithError(target, "Coordenadas invalidas.");
   }
 
-  const payload = {
+  const basePayload = {
     title,
     slug,
+    inscricao_imobiliaria: inscricaoImobiliaria,
     address,
     neighborhood_id: neighborhoodId,
     property_type: propertyType,
@@ -395,6 +407,12 @@ export async function savePropertyAction(formData: FormData) {
     tags,
     is_public: isPublic,
   };
+  const payload = {
+    ...basePayload,
+    localizacao_status_final: locationStatusFinal,
+    prioridade_revisao: priorityReview,
+    pronto_para_mapa: readyForMap,
+  };
 
   let savedId = propertyId;
 
@@ -402,22 +420,50 @@ export async function savePropertyAction(formData: FormData) {
     const { error } = await supabase.from("properties").update(payload).eq("id", propertyId);
 
     if (error) {
-      redirectWithError(target, error.message);
+      const retry = await supabase.from("properties").update(basePayload).eq("id", propertyId);
+
+      if (retry.error) {
+        redirectWithError(target, error.message);
+      }
     }
   } else {
     const { data, error } = await supabase.from("properties").insert(payload).select("id").single();
+    let insertedData = data;
 
     if (error) {
-      redirectWithError(target, error.message);
+      const retry = await supabase.from("properties").insert(basePayload).select("id").single();
+
+      if (retry.error) {
+        redirectWithError(target, error.message);
+      }
+
+      insertedData = retry.data;
     }
 
-    const insertedId = data?.id;
+    const insertedId = insertedData?.id;
 
     if (!insertedId) {
       redirectWithError(target, "Nao foi possivel criar o imovel.");
     }
 
     savedId = insertedId;
+  }
+
+  if (savedId) {
+    if (previousInscricao && previousInscricao !== inscricaoImobiliaria) {
+      await supabase.from("property_fiscal_signals").update({ property_id: null }).eq("inscricao_imobiliaria", previousInscricao).eq("property_id", savedId);
+    }
+
+    if (inscricaoImobiliaria) {
+      const { error: linkError } = await supabase
+        .from("property_fiscal_signals")
+        .update({ property_id: savedId })
+        .eq("inscricao_imobiliaria", inscricaoImobiliaria);
+
+      if (linkError) {
+        redirectWithError(target, `Imovel salvo, mas falhou ao vincular inscricao: ${linkError.message}`);
+      }
+    }
   }
 
   revalidatePath("/admin/imoveis");
@@ -630,4 +676,239 @@ export async function moderateContributionAction(formData: FormData) {
       : `${target}?saved=1`;
 
   redirect(successUrl);
+}
+
+function slugify(text: string) {
+  return text
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w-]+/g, "")
+    .replace(/--+/g, "-");
+}
+
+export async function linkPropertyToSignalAction(inscricaoImobiliaria: string, propertyId: string | null) {
+  try {
+    const supabase = requireAdminClient();
+    
+    if (!propertyId) {
+      // Unlinking
+      const { data: signal } = await supabase
+        .from("property_fiscal_signals")
+        .select("property_id")
+        .eq("inscricao_imobiliaria", inscricaoImobiliaria)
+        .maybeSingle();
+      
+      if (signal?.property_id) {
+        await supabase.from("properties").update({ inscricao_imobiliaria: null }).eq("id", signal.property_id);
+      }
+      
+      await supabase.from("property_fiscal_signals").update({ property_id: null }).eq("inscricao_imobiliaria", inscricaoImobiliaria);
+      
+      revalidatePath("/admin/imoveis");
+      revalidatePath("/admin");
+      revalidatePath("/imoveis");
+      return { success: true };
+    }
+
+    // Linking to propertyId
+    // Clear any existing signal linked to propertyId
+    await supabase.from("property_fiscal_signals").update({ property_id: null }).eq("property_id", propertyId);
+    
+    // Clear any existing property linked to inscricaoImobiliaria
+    await supabase.from("properties").update({ inscricao_imobiliaria: null }).eq("inscricao_imobiliaria", inscricaoImobiliaria);
+
+    // Set new links
+    await supabase.from("property_fiscal_signals").update({ property_id: propertyId }).eq("inscricao_imobiliaria", inscricaoImobiliaria);
+    await supabase.from("properties").update({ inscricao_imobiliaria: inscricaoImobiliaria }).eq("id", propertyId);
+
+    revalidatePath("/admin/imoveis");
+    revalidatePath("/admin");
+    revalidatePath("/imoveis");
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido ao vincular.";
+    return { success: false, error: message };
+  }
+}
+
+export async function updatePropertyTitleAction(propertyId: string, title: string) {
+  try {
+    const supabase = requireAdminClient();
+    const slug = slugify(title);
+    
+    const { error } = await supabase
+      .from("properties")
+      .update({ title, slug })
+      .eq("id", propertyId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const { data: prop } = await supabase.from("properties").select("slug").eq("id", propertyId).maybeSingle();
+    
+    revalidatePath("/admin/imoveis");
+    revalidatePath("/admin");
+    revalidatePath("/imoveis");
+    if (prop?.slug) {
+      revalidatePath(`/imoveis/${prop.slug}`);
+    }
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao atualizar título.";
+    return { success: false, error: message };
+  }
+}
+
+export async function createAndLinkPropertyAction(inscricaoImobiliaria: string, title: string) {
+  try {
+    const supabase = requireAdminClient();
+    const slug = slugify(title);
+
+    const { data: signal, error: signalError } = await supabase
+      .from("property_fiscal_signals")
+      .select("*")
+      .eq("inscricao_imobiliaria", inscricaoImobiliaria)
+      .maybeSingle();
+
+    if (signalError || !signal) {
+      return { success: false, error: signalError?.message || "Sinal fiscal não encontrado." };
+    }
+
+    const { data: nbhList } = await supabase
+      .from("neighborhoods")
+      .select("id, name")
+      .order("name", { ascending: true });
+
+    let neighborhoodId = null;
+    if (nbhList && nbhList.length > 0) {
+      if (signal.bairro_oficial) {
+        const normalizedBairro = signal.bairro_oficial.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+        const match = nbhList.find((n) => {
+          const normalizedName = n.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+          return normalizedName === normalizedBairro || normalizedName.includes(normalizedBairro) || normalizedBairro.includes(normalizedName);
+        });
+        if (match) {
+          neighborhoodId = match.id;
+        }
+      }
+      if (!neighborhoodId) {
+        neighborhoodId = nbhList[0].id;
+      }
+    }
+
+    if (!neighborhoodId) {
+      return { success: false, error: "Nenhum bairro cadastrado no sistema para associar." };
+    }
+
+    const { data: newProp, error: insertError } = await supabase
+      .from("properties")
+      .insert({
+        title,
+        slug,
+        inscricao_imobiliaria: inscricaoImobiliaria,
+        address: signal.endereco_oficial ?? "Endereço em revisão",
+        neighborhood_id: neighborhoodId,
+        property_type: "outro",
+        status: "vazio",
+        criticality: "media",
+        is_public: false,
+        latitude: signal.latitude ?? 0,
+        longitude: signal.longitude ?? 0,
+        localizacao_status_final: signal.localizacao_status_final,
+        pronto_para_mapa: signal.pronto_para_mapa,
+        prioridade_revisao: signal.prioridade_revisao,
+        excerpt: "Registro fiscal importado da base patrimonial.",
+        description: `Imóvel cadastrado a partir do sinal fiscal de inscrição ${inscricaoImobiliaria}.`,
+      })
+      .select("id")
+      .single();
+
+    if (insertError || !newProp) {
+      return { success: false, error: insertError?.message ?? "Falha ao criar o imóvel editorial." };
+    }
+
+    await supabase
+      .from("property_fiscal_signals")
+      .update({ property_id: newProp.id })
+      .eq("inscricao_imobiliaria", inscricaoImobiliaria);
+
+    revalidatePath("/admin/imoveis");
+    revalidatePath("/admin");
+    revalidatePath("/imoveis");
+    return { success: true, propertyId: newProp.id };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao criar e vincular imóvel.";
+    return { success: false, error: message };
+  }
+}
+
+export async function deleteQuickImageAction(propertyId: string, imageId: string) {
+  try {
+    const supabase = requireAdminClient();
+    
+    const { data: row } = await supabase
+      .from("property_images")
+      .select("storage_path")
+      .eq("id", imageId)
+      .eq("property_id", propertyId)
+      .maybeSingle();
+
+    if (row?.storage_path) {
+      await supabase.storage.from(PROPERTY_IMAGE_BUCKET).remove([row.storage_path]);
+    }
+
+    const { error } = await supabase
+      .from("property_images")
+      .delete()
+      .eq("id", imageId)
+      .eq("property_id", propertyId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const { data: prop } = await supabase.from("properties").select("slug").eq("id", propertyId).maybeSingle();
+
+    revalidatePath("/admin/imoveis");
+    revalidatePath("/admin");
+    revalidatePath("/imoveis");
+    if (prop?.slug) {
+      revalidatePath(`/imoveis/${prop.slug}`);
+    }
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao excluir imagem.";
+    return { success: false, error: message };
+  }
+}
+
+export async function setQuickImageCoverAction(propertyId: string, imageId: string) {
+  try {
+    const supabase = requireAdminClient();
+    
+    await supabase.from("property_images").update({ is_cover: false }).eq("property_id", propertyId);
+    const { error } = await supabase.from("property_images").update({ is_cover: true }).eq("id", imageId);
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    const { data: prop } = await supabase.from("properties").select("slug").eq("id", propertyId).maybeSingle();
+
+    revalidatePath("/admin/imoveis");
+    revalidatePath("/admin");
+    revalidatePath("/imoveis");
+    if (prop?.slug) {
+      revalidatePath(`/imoveis/${prop.slug}`);
+    }
+    return { success: true };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro ao definir imagem como capa.";
+    return { success: false, error: message };
+  }
 }

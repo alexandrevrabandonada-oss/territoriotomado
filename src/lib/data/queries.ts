@@ -8,12 +8,15 @@ import {
   propertyTimeline,
   reuseProposals,
 } from "@/lib/data/mock-data";
-import type { Criticality, PropertyBundle, PropertyStatus } from "@/types/domain";
+import type { Criticality, LocationStatus, PriorityReview, PropertyBundle, PropertyStatus } from "@/types/domain";
 
 export interface PropertyFilters {
   status?: PropertyStatus | "todos";
   neighborhood?: string | "todos";
   criticality?: Criticality | "todos";
+  readyForMap?: "sim" | "nao" | "todos";
+  priorityReview?: PriorityReview | "todos";
+  locationStatus?: LocationStatus | "todos";
 }
 
 export interface PropertyMapFeature {
@@ -22,10 +25,14 @@ export interface PropertyMapFeature {
   title: string;
   neighborhoodId: string;
   neighborhoodName: string;
+  neighborhoodSlug?: string;
   status: PropertyStatus;
   criticality: Criticality;
   lat: number;
   lng: number;
+  readyForMap: boolean;
+  priorityReview: PriorityReview;
+  locationStatus: LocationStatus;
 }
 
 export function getProperties(filters: PropertyFilters = {}) {
@@ -51,10 +58,14 @@ export function getMapProperties(filters: PropertyFilters = {}): PropertyMapFeat
     title: property.title,
     neighborhoodId: property.neighborhoodId,
     neighborhoodName: getNeighborhoodName(property.neighborhoodId),
+    neighborhoodSlug: neighborhoods.find((n) => n.id === property.neighborhoodId)?.slug,
     status: property.status,
     criticality: property.criticality,
     lat: property.lat,
     lng: property.lng,
+    readyForMap: Number.isFinite(property.lat) && Number.isFinite(property.lng),
+    priorityReview: property.criticality,
+    locationStatus: property.criticality === "alta" ? "ambigua" : "aproximada",
   }));
 }
 

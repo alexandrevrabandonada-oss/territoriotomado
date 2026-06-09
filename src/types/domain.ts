@@ -5,6 +5,17 @@ export type PropertyStatus =
   | "uso-institucional";
 
 export type Criticality = "alta" | "media" | "baixa";
+export type ReadyForMapFilter = "sim" | "nao";
+export type PriorityReview = "alta" | "media" | "baixa";
+export type LocationStatus = "confirmada" | "aproximada" | "ambigua" | "pendente";
+export type ValueVenalStatus =
+  | "estimado_alta_confianca"
+  | "estimado_media_confianca"
+  | "estimado_baixa_confianca"
+  | "estimativa_confirmada_por_revisao"
+  | "estimativa_suspensa_por_revisao"
+  | "revisao_manual"
+  | "nao_publicado";
 export type PropertyType = "clube" | "galpao" | "casa-tecnica" | "terreno" | "outro";
 export type PropertyReportType = "relato" | "foto" | "documento" | "denuncia" | "atualizacao" | "memoria";
 export type PropertyReportEditorialDestination = "relato_publico" | "timeline" | "media";
@@ -117,9 +128,11 @@ export interface Property {
   id: string;
   slug: string;
   title: string;
+  inscricaoImobiliaria?: string;
   address: string;
   neighborhoodId: string;
   neighborhoodName?: string;
+  neighborhoodSlug?: string;
   propertyType?: PropertyType;
   status: PropertyStatus;
   criticality: Criticality;
@@ -143,6 +156,14 @@ export interface Property {
   hasProof?: boolean;
   hasMedia?: boolean;
   isPriority?: boolean;
+  readyForMap?: boolean;
+  priorityReview?: PriorityReview;
+  locationStatus?: LocationStatus;
+  valueVenalStatus?: ValueVenalStatus | string;
+  valueVenalConfidence?: string;
+  estimatedMarketValue?: number;
+  iptu2019?: number;
+  iptu2025?: number;
   missionUrl?: string;
   communityUrl?: string;
   dossierUrl?: string;

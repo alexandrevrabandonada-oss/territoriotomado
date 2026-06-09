@@ -13,15 +13,15 @@ import { cn } from "@/lib/utils/cn";
 const mapCenter: [number, number] = [-22.5233, -44.1045];
 const mapZoom = 14;
 
-const statusMarkerStyles: Record<PropertyMapFeature["status"], { fill: string; ring: string; border: string }> = {
-  ocupado: { fill: "#7d909b", ring: "rgba(125,144,155,0.24)", border: "#f2f4ef" },
-  vazio: { fill: "#8f5944", ring: "rgba(196,139,112,0.22)", border: "#c48b70" },
-  "em-disputa": { fill: "#e9ad12", ring: "rgba(233,173,18,0.28)", border: "#ffd76a" },
-  "uso-institucional": { fill: "#46545d", ring: "rgba(242,244,239,0.22)", border: "#d3d9d5" },
+const locationMarkerStyles: Record<PropertyMapFeature["locationStatus"], { fill: string; ring: string; border: string }> = {
+  confirmada: { fill: "#6f8793", ring: "rgba(111,135,147,0.26)", border: "#dfe7df" },
+  aproximada: { fill: "#e9ad12", ring: "rgba(233,173,18,0.26)", border: "#ffd76a" },
+  ambigua: { fill: "#8f5944", ring: "rgba(196,139,112,0.24)", border: "#ffd76a" },
+  pendente: { fill: "#46545d", ring: "rgba(242,244,239,0.18)", border: "#d3d9d5" },
 };
 
-function createMarkerIcon(status: PropertyMapFeature["status"], isFocused = false) {
-  const style = statusMarkerStyles[status];
+function createMarkerIcon(locationStatus: PropertyMapFeature["locationStatus"], isFocused = false) {
+  const style = locationMarkerStyles[locationStatus];
   const scale = isFocused ? 1.42 : 1;
   const shadow = isFocused
     ? `${style.ring}, 0 0 0 6px rgba(242,244,239,0.08), 0 0 0 12px rgba(233,173,18,0.16), 0 14px 28px rgba(39,50,58,0.38)`
@@ -96,7 +96,7 @@ export function PropertyMap({ properties, focusSlug, navigationContext, classNam
           <Marker
             key={property.id}
             position={[property.lat, property.lng]}
-            icon={createMarkerIcon(property.status, property.slug === focusSlug)}
+            icon={createMarkerIcon(property.locationStatus, property.slug === focusSlug)}
             zIndexOffset={property.slug === focusSlug ? 1000 : 0}
           >
             <Popup>
@@ -108,7 +108,13 @@ export function PropertyMap({ properties, focusSlug, navigationContext, classNam
                 <div className="grid gap-2 text-[11px] uppercase tracking-[0.16em] text-ink/72">
                   <div className="flex items-center justify-between gap-3">
                     <span>bairro</span>
-                    <span className="text-right font-semibold text-ink">{property.neighborhoodName}</span>
+                    {property.neighborhoodSlug ? (
+                      <a href={`/bairros/${property.neighborhoodSlug}`} className="text-right font-semibold text-[#7a4b20] hover:underline" target="_top">
+                        {property.neighborhoodName}
+                      </a>
+                    ) : (
+                      <span className="text-right font-semibold text-ink">{property.neighborhoodName}</span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between gap-3">
                     <span>status</span>
@@ -117,6 +123,14 @@ export function PropertyMap({ properties, focusSlug, navigationContext, classNam
                   <div className="flex items-center justify-between gap-3">
                     <span>criticidade</span>
                     <Badge kind="criticality" value={property.criticality}>{property.criticality}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>localizacao</span>
+                    <Badge kind="territory" value="recorte-ativo">{property.locationStatus}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between gap-3">
+                    <span>revisao</span>
+                    <Badge kind="criticality" value={property.priorityReview}>{property.priorityReview}</Badge>
                   </div>
                   {property.slug === focusSlug ? <Badge kind="territory" value="foco-ativo">em foco</Badge> : null}
                 </div>

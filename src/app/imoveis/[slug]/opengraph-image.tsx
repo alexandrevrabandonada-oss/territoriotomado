@@ -3,7 +3,7 @@ import { getPublishedPropertyBundle } from "@/lib/data/public-queries";
 import { getPropertySharePhrase } from "@/lib/share-copy";
 import { PropertySharePack } from "@/lib/share-pack";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export const alt = "Territorio Tomado | Imovel";
 export const size = { width: 1200, height: 630 };
@@ -33,6 +33,8 @@ export default async function Image({ params }: PropertyOgImageProps) {
           status: property.status,
           criticality: property.criticality,
           phrase: getPropertySharePhrase(property.status, property.criticality),
+          locationStatus: property.locationStatus,
+          priorityReview: property.priorityReview,
         }}
       />
     ),

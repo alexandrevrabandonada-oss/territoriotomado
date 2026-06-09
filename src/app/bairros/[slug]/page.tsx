@@ -9,7 +9,7 @@ import { MetricCard } from "@/components/ui/metric-card";
 import { PanelCard } from "@/components/ui/panel-card";
 import { SectionHeader } from "@/components/ui/section-header";
 import { PropertyCard } from "@/components/properties/property-card";
-import { PropertyMap } from "@/components/map/property-map";
+import { PropertyMapClient } from "@/components/map/property-map-client";
 import { getActionKindLabel } from "@/lib/data/action-kinds";
 import { getPublishedNeighborhoodDetail } from "@/lib/data/public-queries";
 import { buildPublicListingHref, parsePublicListingContext, type PublicListingContext } from "@/lib/navigation/public-context";
@@ -21,12 +21,23 @@ interface NeighborhoodDetailPageProps {
     status?: string;
     criticidade?: string;
     bairro?: string;
+    pronto?: string;
+    revisao?: string;
+    localizacao?: string;
     imovel?: string;
     from?: string;
   }>;
 }
 
 const getNeighborhoodDetail = cache(getPublishedNeighborhoodDetail);
+
+function formatMoney(value?: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "em revisao";
+  }
+
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+}
 
 export async function generateMetadata({ params }: NeighborhoodDetailPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -74,6 +85,19 @@ export default async function NeighborhoodDetailPage({ params, searchParams }: N
   };
   const focusSlug = searchContext.imovel && detail.properties.some((property) => property.slug === searchContext.imovel) ? searchContext.imovel : undefined;
   const criticalProperties = detail.properties.filter((property) => property.criticality === "alta");
+  const strategicProperties = [...detail.properties]
+    .sort((left, right) => {
+      const score = (property: (typeof detail.properties)[number]) =>
+        (property.isPriority ? 500 : 0) +
+        (property.criticality === "alta" ? 300 : property.criticality === "media" ? 120 : 0) +
+        (property.priorityReview === "alta" ? 220 : property.priorityReview === "media" ? 80 : 0) +
+        (property.hasOpenAction ? 160 : 0) +
+        Math.round((property.estimatedMarketValue ?? 0) / 100000) +
+        Math.round((property.iptu2025 ?? 0) / 1000);
+
+      return score(right) - score(left);
+    })
+    .slice(0, 3);
   const territorialSummary = detail.description || detail.narrative;
   const mapProperties: PropertyMapFeature[] = detail.properties.map((property) => ({
     id: property.id,
@@ -85,6 +109,9 @@ export default async function NeighborhoodDetailPage({ params, searchParams }: N
     criticality: property.criticality,
     lat: property.lat,
     lng: property.lng,
+    readyForMap: property.readyForMap ?? true,
+    priorityReview: property.priorityReview ?? "media",
+    locationStatus: property.locationStatus ?? "aproximada",
   }));
 
   return (
@@ -98,21 +125,28 @@ export default async function NeighborhoodDetailPage({ params, searchParams }: N
         <SectionHeader
           eyebrow="territorio em disputa"
           title={detail.name}
-          description={territorialSummary}
+          description={`${territorialSummary} Bairro como unidade politica: primeiro mapa, depois ficha.`}
           variant="compact"
           descriptionClassName="max-w-2xl text-paper/76"
         />
-        <div className="grid grid-cols-3 gap-2 sm:min-w-[340px] xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 sm:min-w-[420px] sm:grid-cols-4">
           <MetricCard label="imoveis" value={detail.propertyCount} compact tone="steel" />
+          <MetricCard label="no mapa" value={detail.readyForMapCount} compact tone="blue" />
           <MetricCard label="criticos" value={detail.criticalPropertyCount} compact tone={detail.criticalPropertyCount > 0 ? "alert" : "default"} />
-          <MetricCard label="acoes abertas" value={detail.openActionCount} compact tone={detail.openActionCount > 0 ? "yellow" : "default"} />
+          <MetricCard label="prioritarios" value={detail.priorityPropertyCount} compact tone={detail.priorityPropertyCount > 0 ? "yellow" : "default"} />
         </div>
         <div className="flex flex-wrap gap-2 xl:justify-end">
           <ButtonLink href={buildPublicListingHref("/mapa", { neighborhood: detail.id, from: "mapa" })} className="w-full text-xs sm:w-auto">
             Abrir mapa
           </ButtonLink>
+          <ButtonLink href={`/circulacao/share/bairro/${detail.slug}/1x1`} variant="secondary" className="w-full text-xs sm:w-auto">
+            Compartilhar
+          </ButtonLink>
           <ButtonLink href={buildPublicListingHref("/imoveis", { neighborhood: detail.id, from: "imoveis" })} variant="secondary" className="w-full text-xs sm:w-auto">
             Ver imoveis
+          </ButtonLink>
+          <ButtonLink href="/agir" variant="ghost" className="w-full text-xs sm:w-auto">
+            Entrar na frente
           </ButtonLink>
         </div>
       </PanelCard>
@@ -135,9 +169,35 @@ export default async function NeighborhoodDetailPage({ params, searchParams }: N
                   {detail.openActionCount > 0 ? <Badge kind="territory" value="foco-ativo">mobilizacao aberta</Badge> : null}
                 </div>
               </div>
+              <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/46">mapa</p>
+                <p className="mt-2 font-display text-3xl uppercase tracking-[0.08em] text-paper">{detail.readyForMapCount}/{detail.propertyCount}</p>
+                <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-paper/54">prontos para leitura territorial</p>
+              </div>
               <div className="border border-concrete/14 bg-ink-alt/42 p-4 sm:col-span-1 lg:col-span-2">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/46">acao ligada ao bairro</p>
+                <p className="mt-2 text-sm leading-6 text-paper/76">
+                  {detail.openActionCount > 0
+                    ? `${detail.openActionCount} frente(s) aberta(s) conectada(s) a imoveis deste bairro.`
+                    : "Ainda nao ha frente aberta vinculada a este bairro."}
+                </p>
+              </div>
+              <div className="border border-concrete/14 bg-ink-alt/42 p-4 sm:col-span-2 lg:col-span-3">
                 <p className="text-[10px] uppercase tracking-[0.18em] text-paper/46">resumo territorial</p>
-                <p className="mt-2 text-sm leading-6 text-paper/76">{detail.narrative}</p>
+                <p className="mt-2 text-sm leading-6 text-paper/76">
+                  {detail.name} concentra {detail.propertyCount} registros, {detail.readyForMapCount} prontos para mapa e {detail.priorityPropertyCount} em prioridade de revisao. A leitura publica separa dado oficial, estimativa e revisao para orientar pauta local, imprensa e mobilizacao.
+                </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <ButtonLink href={`/circulacao/share/bairro/${detail.slug}/1x1`} variant="secondary" className="text-xs">
+                    compartilhar bairro
+                  </ButtonLink>
+                  <ButtonLink href="/agir" variant="ghost" className="text-xs">
+                    ver acao aberta
+                  </ButtonLink>
+                  <ButtonLink href="/admin/revisao" variant="ghost" className="text-xs">
+                    ajudar revisao
+                  </ButtonLink>
+                </div>
               </div>
             </div>
           </PanelCard>
@@ -154,7 +214,7 @@ export default async function NeighborhoodDetailPage({ params, searchParams }: N
             }
           >
             <div className="grid gap-4">
-              <PropertyMap properties={mapProperties} focusSlug={focusSlug} navigationContext={navigationContext} className="h-[360px] sm:h-[420px] lg:h-[460px] lg:min-h-0" />
+              <PropertyMapClient properties={mapProperties} focusSlug={focusSlug} navigationContext={navigationContext} className="h-[360px] sm:h-[420px] lg:h-[460px] lg:min-h-0" />
               {detail.properties.length > 0 ? (
                 <div className="grid gap-3">
                   {detail.properties.map((property) => (
@@ -186,6 +246,58 @@ export default async function NeighborhoodDetailPage({ params, searchParams }: N
         </div>
 
         <div className="grid gap-4">
+          <PanelCard
+            density="compact"
+            eyebrow="imoveis estrategicos"
+            title="Por onde agir primeiro"
+            description="Recorte de prioridade politica do bairro: criticidade, revisao, acao aberta e pressao fiscal/estimada."
+          >
+            <div className="grid gap-3">
+              {strategicProperties.length > 0 ? (
+                strategicProperties.map((property) => (
+                  <article key={property.id} className="border border-concrete/16 bg-ink-alt/32 p-4">
+                    <div className="flex flex-wrap gap-2">
+                      <Badge kind="territory" value={property.isPriority ? "pressao-alta" : "leitura-ativa"}>
+                        {property.isPriority ? "prioritario" : "estrategico"}
+                      </Badge>
+                      <Badge kind="criticality" value={property.criticality} />
+                      <Badge tone="neutral" variant="soft">{`revisao ${property.priorityReview ?? "media"}`}</Badge>
+                    </div>
+                    <h3 className="mt-3 font-display text-xl uppercase leading-6 tracking-[0.07em] text-paper">{property.title}</h3>
+                    <p className="mt-2 text-sm leading-5 text-paper/68">{property.excerpt}</p>
+                    <p className="mt-3 text-[11px] uppercase tracking-[0.14em] text-paper/48">
+                      oficial {formatMoney(property.iptu2025)} · estimado {formatMoney(property.estimatedMarketValue)} · {property.valueVenalStatus ?? "valor em revisao"}
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <ButtonLink
+                        href={buildPublicListingHref(`/imoveis/${property.slug}`, navigationContext, {
+                          imovel: property.slug,
+                          from: "imoveis",
+                        })}
+                        variant="secondary"
+                        className="text-xs"
+                      >
+                        ver ficha
+                      </ButtonLink>
+                      <ButtonLink href={`/imoveis/${property.slug}/share/1x1`} variant="ghost" className="text-xs">
+                        compartilhar
+                      </ButtonLink>
+                      <ButtonLink href={`/agir?imovel=${property.slug}`} variant={property.hasOpenAction ? "primary" : "ghost"} className="text-xs">
+                        {property.hasOpenAction ? "ver acao aberta" : "entrar na frente"}
+                      </ButtonLink>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <EmptyState
+                  eyebrow="sem prioridade publicada"
+                  title="Sem imoveis estrategicos"
+                  description="Quando houver ficha publicada neste bairro, o nucleo estrategico aparece aqui."
+                />
+              )}
+            </div>
+          </PanelCard>
+
           <PanelCard
             density="compact"
             eyebrow="acoes abertas"

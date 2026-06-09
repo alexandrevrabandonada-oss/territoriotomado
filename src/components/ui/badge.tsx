@@ -27,25 +27,25 @@ const toneAlias: Record<BadgeTone, CanonicalBadgeTone> = {
 
 const toneClasses: Record<"solid" | "outline" | "soft", Record<CanonicalBadgeTone, string>> = {
   solid: {
-    yellow: "border-signal/55 bg-signal/85 text-ink-deep",
-    blue: "border-glass/45 bg-steel/55 text-paper",
-    rust: "border-rust/50 bg-rust/60 text-paper",
-    alert: "border-signal/65 bg-signal text-ink-deep",
-    neutral: "border-concrete/30 bg-concrete/28 text-paper",
+    yellow: "border-signal/40 bg-signal/90 text-ink-deep",
+    blue: "border-glass/35 bg-steel/65 text-paper",
+    rust: "border-rust/40 bg-rust/70 text-paper",
+    alert: "border-signal/50 bg-signal text-ink-deep",
+    neutral: "border-concrete/20 bg-concrete/20 text-paper",
   },
   outline: {
-    yellow: "border-signal/55 bg-transparent text-signal",
-    blue: "border-glass/50 bg-transparent text-glass-cold",
-    rust: "border-rust/50 bg-transparent text-rust-light",
-    alert: "border-signal/70 bg-transparent text-signal-light",
-    neutral: "border-concrete/26 bg-transparent text-paper/72",
+    yellow: "border-signal/45 bg-transparent text-signal",
+    blue: "border-glass/40 bg-transparent text-glass-cold",
+    rust: "border-rust/40 bg-transparent text-rust-light",
+    alert: "border-signal/50 bg-transparent text-signal-light",
+    neutral: "border-concrete/20 bg-transparent text-paper/60",
   },
   soft: {
-    yellow: "border-signal/36 bg-signal/12 text-signal",
-    blue: "border-glass/40 bg-steel/18 text-glass-cold",
-    rust: "border-rust/42 bg-rust/12 text-rust-light",
-    alert: "border-signal/48 bg-signal/16 text-signal-light",
-    neutral: "border-concrete/18 bg-concrete/9 text-paper/72",
+    yellow: "border-signal/20 bg-signal/10 text-signal-light",
+    blue: "border-glass/25 bg-steel/12 text-glass-cold",
+    rust: "border-rust/25 bg-rust/10 text-rust-light",
+    alert: "border-signal/28 bg-signal/12 text-signal-light",
+    neutral: "border-concrete/14 bg-concrete/6 text-paper/58",
   },
 };
 

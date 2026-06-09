@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import type { Criticality, Property, PropertyReportStatus, PropertyReportType, PropertyType } from "@/types/domain";
+import type { Criticality, LocationStatus, PriorityReview, Property, PropertyReportStatus, PropertyReportType, PropertyType } from "@/types/domain";
 import type { ContributionEditorialDestination } from "@/lib/data/contribution-editorial";
 
 export interface AdminNeighborhoodOption {
@@ -7,9 +7,42 @@ export interface AdminNeighborhoodOption {
   name: string;
 }
 
+export interface AdminFiscalSignalOption {
+  inscricao: string;
+  endereco: string;
+  bairro: string;
+  propertyId?: string | null;
+}
+
+export interface AdminCompleteBaseProperty {
+  inscricaoImobiliaria: string;
+  enderecoOficial: string;
+  bairroOficial: string;
+  latitude: number | null;
+  longitude: number | null;
+  localizacaoStatusFinal: LocationStatus | null;
+  prontoParaMapa: boolean | null;
+  prioridadeRevisao: PriorityReview | null;
+  propertyId: string | null;
+  property: {
+    id: string;
+    title: string;
+    slug: string;
+    isPublic: boolean;
+    images: Array<{
+      id: string;
+      imageUrl: string;
+      storagePath: string | null;
+      isCover: boolean;
+      position: number;
+    }>;
+  } | null;
+}
+
 export interface AdminPropertyRow {
   id: string;
   slug: string;
+  inscricao_imobiliaria: string | null;
   title: string;
   address: string;
   neighborhood_id: string;
@@ -31,6 +64,9 @@ export interface AdminPropertyRow {
   community_url: string | null;
   dossier_url: string | null;
   external_reference_url: string | null;
+  localizacao_status_final?: LocationStatus | null;
+  pronto_para_mapa?: boolean | null;
+  prioridade_revisao?: PriorityReview | null;
   neighborhoods?: {
     id: string;
     name: string;
@@ -46,6 +82,7 @@ export interface AdminPropertyEditorData extends Property {
 
 export interface AdminPropertyFormOptions {
   neighborhoods: AdminNeighborhoodOption[];
+  fiscalSignals: AdminFiscalSignalOption[];
   propertyTypes: PropertyType[];
   statuses: Property["status"][];
   criticalities: Criticality[];
@@ -173,6 +210,7 @@ function mapRowToProperty(row: AdminPropertyRow): AdminPropertyEditorData {
   return {
     id: row.id,
     slug: row.slug,
+    inscricaoImobiliaria: row.inscricao_imobiliaria ?? undefined,
     title: row.title,
     address: row.address,
     neighborhoodId: row.neighborhood_id,
@@ -195,20 +233,39 @@ function mapRowToProperty(row: AdminPropertyRow): AdminPropertyEditorData {
     communityUrl: row.community_url ?? undefined,
     dossierUrl: row.dossier_url ?? undefined,
     externalReferenceUrl: row.external_reference_url ?? undefined,
+    locationStatus: row.localizacao_status_final ?? undefined,
+    readyForMap: row.pronto_para_mapa ?? undefined,
+    priorityReview: row.prioridade_revisao ?? undefined,
   };
 }
 
 export async function getAdminPropertyOptions(): Promise<AdminPropertyFormOptions> {
   const supabase = getAdminSupabaseOrThrow();
 
-  const { data, error } = await supabase.from("neighborhoods").select("id, name").order("name", { ascending: true });
+  const [neighborhoodsResult, fiscalSignalsResult] = await Promise.all([
+    supabase.from("neighborhoods").select("id, name").order("name", { ascending: true }),
+    supabase
+      .from("property_fiscal_signals")
+      .select("inscricao_imobiliaria, endereco_oficial, bairro_oficial, property_id")
+      .order("bairro_oficial", { ascending: true })
+      .order("endereco_oficial", { ascending: true })
+      .limit(500),
+  ]);
 
-  if (error) {
-    throw new Error(`Falha ao buscar bairros: ${error.message}`);
+  if (neighborhoodsResult.error) {
+    throw new Error(`Falha ao buscar bairros: ${neighborhoodsResult.error.message}`);
   }
 
   return {
-    neighborhoods: data ?? [],
+    neighborhoods: neighborhoodsResult.data ?? [],
+    fiscalSignals: fiscalSignalsResult.error
+      ? []
+      : (fiscalSignalsResult.data ?? []).map((row) => ({
+          inscricao: row.inscricao_imobiliaria,
+          endereco: row.endereco_oficial ?? "Endereco fiscal sem texto",
+          bairro: row.bairro_oficial ?? "Bairro fiscal sem texto",
+          propertyId: row.property_id,
+        })),
     propertyTypes: ["clube", "galpao", "casa-tecnica", "terreno", "outro"],
     statuses: ["ocupado", "vazio", "em-disputa", "uso-institucional"],
     criticalities: ["alta", "media", "baixa"],
@@ -220,7 +277,7 @@ export async function getAdminProperties(): Promise<AdminPropertyEditorData[]> {
   const { data, error } = await supabase
     .from("properties")
     .select(
-      "id, slug, title, address, neighborhood_id, excerpt, description, historical_context, social_use_potential, current_use, area_estimate, current_status, criticality, property_type, latitude, longitude, legal_notes, tags, mission_url, community_url, dossier_url, external_reference_url, is_public, neighborhoods(id, name)",
+      "*, neighborhoods(id, name)",
     )
     .order("updated_at", { ascending: false });
 
@@ -231,12 +288,131 @@ export async function getAdminProperties(): Promise<AdminPropertyEditorData[]> {
   return (data ?? []).map((row) => mapRowToProperty(row as unknown as AdminPropertyRow));
 }
 
+export async function getAdminCompleteBaseProperties(): Promise<AdminCompleteBaseProperty[]> {
+  const supabase = getAdminSupabaseOrThrow();
+  const { data, error } = await supabase
+    .from("property_fiscal_signals")
+    .select(`
+      inscricao_imobiliaria,
+      endereco_oficial,
+      bairro_oficial,
+      latitude,
+      longitude,
+      localizacao_status_final,
+      pronto_para_mapa,
+      prioridade_revisao,
+      property_id,
+      properties (
+        id,
+        title,
+        slug,
+        is_public,
+        property_images (
+          id,
+          image_url,
+          storage_path,
+          is_cover,
+          position
+        )
+      )
+    `)
+    .order("bairro_oficial", { ascending: true })
+    .order("endereco_oficial", { ascending: true });
+
+  if (error) {
+    throw new Error(`Falha ao buscar base completa: ${error.message}`);
+  }
+
+  interface SupabaseImageRow {
+    id: string;
+    image_url: string;
+    storage_path: string | null;
+    is_cover: boolean | null;
+    position: number | null;
+  }
+
+  interface SupabasePropertyJoin {
+    id: string;
+    title: string;
+    slug: string;
+    is_public: boolean | null;
+    property_images?: SupabaseImageRow[] | SupabaseImageRow | null;
+  }
+
+  interface SupabaseSignalRow {
+    inscricao_imobiliaria: string;
+    endereco_oficial: string | null;
+    bairro_oficial: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    localizacao_status_final: string | null;
+    pronto_para_mapa: boolean | null;
+    prioridade_revisao: string | null;
+    property_id: string | null;
+    properties?: SupabasePropertyJoin[] | SupabasePropertyJoin | null;
+  }
+
+  interface MappedImage {
+    id: string;
+    imageUrl: string;
+    storagePath: string | null;
+    isCover: boolean;
+    position: number;
+  }
+
+  return ((data as unknown as SupabaseSignalRow[]) ?? []).map((row) => {
+    const propRecord = row.properties;
+    const prop = Array.isArray(propRecord) ? propRecord[0] : propRecord;
+    
+    let mappedProperty = null;
+    if (prop) {
+      const imagesRaw = Array.isArray(prop.property_images) 
+        ? prop.property_images 
+        : prop.property_images 
+          ? [prop.property_images] 
+          : [];
+      
+      const images = imagesRaw
+        .filter(Boolean)
+        .map((img): MappedImage => ({
+          id: img.id,
+          imageUrl: img.image_url,
+          storagePath: img.storage_path,
+          isCover: img.is_cover ?? false,
+          position: img.position ?? 0,
+        }))
+        .sort((a: MappedImage, b: MappedImage) => Number(b.isCover) - Number(a.isCover) || a.position - b.position);
+
+      mappedProperty = {
+        id: prop.id,
+        title: prop.title,
+        slug: prop.slug,
+        isPublic: prop.is_public ?? false,
+        images,
+      };
+    }
+
+    return {
+      inscricaoImobiliaria: row.inscricao_imobiliaria,
+      enderecoOficial: row.endereco_oficial ?? "Sem endereço oficial",
+      bairroOficial: row.bairro_oficial ?? "Sem bairro oficial",
+      latitude: row.latitude,
+      longitude: row.longitude,
+      localizacaoStatusFinal: row.localizacao_status_final as LocationStatus | null,
+      prontoParaMapa: row.pronto_para_mapa,
+      prioridadeRevisao: row.prioridade_revisao as PriorityReview | null,
+      propertyId: row.property_id,
+      property: mappedProperty,
+    };
+  });
+}
+
 export async function getAdminPropertyById(id: string): Promise<AdminPropertyEditorData | null> {
   const supabase = getAdminSupabaseOrThrow();
   const { data, error } = await supabase
     .from("properties")
     .select(
-      "id, slug, title, address, neighborhood_id, excerpt, description, historical_context, social_use_potential, current_use, area_estimate, current_status, criticality, property_type, latitude, longitude, legal_notes, tags, mission_url, community_url, dossier_url, external_reference_url, is_public, neighborhoods(id, name)",
+      "*, neighborhoods(id, name)",
     )
     .eq("id", id)
     .maybeSingle();

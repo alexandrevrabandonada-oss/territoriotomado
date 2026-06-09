@@ -3,7 +3,7 @@ import { getPublishedActionFeed } from "@/lib/data/public-queries";
 import { getActionSharePhrase } from "@/lib/share-copy";
 import { ActionSharePack } from "@/lib/share-pack";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export const alt = "Territorio Tomado | Agir";
 export const size = { width: 1200, height: 630 };

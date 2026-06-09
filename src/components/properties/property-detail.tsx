@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button-link";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -14,6 +15,31 @@ interface PropertyDetailProps {
   returnLabel?: string;
 }
 
+const locationStatusLabels = {
+  confirmada: "localizacao confirmada",
+  aproximada: "localizacao aproximada",
+  ambigua: "localizacao ambigua",
+  pendente: "localizacao pendente",
+} as const;
+
+const valueStatusLabels = {
+  estimado_alta_confianca: "estimado alta confianca",
+  estimado_media_confianca: "estimado media confianca",
+  estimado_baixa_confianca: "estimado baixa confianca",
+  estimativa_confirmada_por_revisao: "estimativa confirmada por revisao",
+  estimativa_suspensa_por_revisao: "estimativa suspensa por revisao",
+  revisao_manual: "revisao manual",
+  nao_publicado: "nao publicado",
+} as const;
+
+function formatMoney(value?: number) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    return "sem dado final";
+  }
+
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+}
+
 export function PropertyDetail({ bundle, returnHref, returnLabel }: PropertyDetailProps) {
   const { property, neighborhood, images, documents, timeline, reports, actions, proposals } = bundle;
   const coverImage = images.find((image) => image.isCover) ?? images[0];
@@ -22,11 +48,19 @@ export function PropertyDetail({ bundle, returnHref, returnLabel }: PropertyDeta
   const secondaryActions = featuredAction ? actions.filter((action) => action.id !== featuredAction.id) : actions;
   const approvedReports = reports.filter((report) => report.status === "aprovado");
   const pendingReportCount = reports.filter((report) => report.status === "pendente").length;
+  const locationStatus = property.locationStatus ?? "aproximada";
+  const priorityReview = property.priorityReview ?? (property.criticality === "alta" ? "alta" : "media");
+  const readyForMap = property.readyForMap ?? (Number.isFinite(property.lat) && Number.isFinite(property.lng));
+  const estimatedValueStatus = property.valueVenalStatus ?? "nao_publicado";
+  const iptu2019 = property.iptu2019;
+  const iptu2025 = property.iptu2025;
+  const estimatedMarketValue = property.estimatedMarketValue;
+  const estimatedValueStatusLabel = valueStatusLabels[estimatedValueStatus as keyof typeof valueStatusLabels] ?? estimatedValueStatus;
   const quickStats = [
     { label: "acao aberta", value: actions.length > 0 ? `${actions.length} frente${actions.length > 1 ? "s" : ""}` : "sem frente aberta" },
-    { label: "prova publica", value: documents.length > 0 || approvedReports.length > 0 ? "documentos ou relatos disponiveis" : "sem prova publicada" },
-    { label: "imagens", value: images.length > 0 ? `${images.length} registro${images.length > 1 ? "s" : ""}` : "sem galeria" },
-    { label: "escala", value: property.areaEstimate },
+    { label: "localizacao", value: locationStatusLabels[locationStatus] },
+    { label: "prioridade revisao", value: priorityReview },
+    { label: "mapa", value: readyForMap ? "pronto para mapa" : "pendente para mapa" },
   ];
 
   return (
@@ -42,6 +76,35 @@ export function PropertyDetail({ bundle, returnHref, returnLabel }: PropertyDeta
           </ButtonLink>
         </PanelCard>
       ) : null}
+      <div className="sticky top-20 z-20">
+        <PanelCard
+          density="compact"
+          tone={featuredAction?.isPriority ? "alert" : "strong"}
+          className="border-signal/30 bg-[linear-gradient(135deg,rgba(233,173,18,0.16),rgba(20,25,29,0.96))] px-4 py-3 shadow-[0_18px_42px_rgba(0,0,0,0.28)]"
+          contentClassName="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.22em] text-signal">proximo passo da ficha</p>
+            <p className="mt-1 text-sm uppercase tracking-[0.14em] text-paper/72">
+              {featuredAction ? featuredAction.title : "sem acao publicada: encaminhar leitura para /agir"}
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            {featuredAction ? (
+              <ButtonLink href={featuredAction.href} className="justify-center text-xs">
+                {featuredAction.ctaLabel}
+              </ButtonLink>
+            ) : (
+              <ButtonLink href="/agir" className="justify-center text-xs">
+                Ver acoes
+              </ButtonLink>
+            )}
+            <ButtonLink href={`/mapa?bairro=${property.neighborhoodId}&imovel=${property.slug}&from=mapa`} variant="secondary" className="justify-center text-xs">
+              Ver no mapa
+            </ButtonLink>
+          </div>
+        </PanelCard>
+      </div>
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
         <PanelCard
           tone="strong"
@@ -50,7 +113,9 @@ export function PropertyDetail({ bundle, returnHref, returnLabel }: PropertyDeta
         >
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              <Badge kind="territory" value="bairro">{neighborhood.name}</Badge>
+              <Link href={`/bairros/${neighborhood.slug}`} className="transition-all hover:opacity-90">
+                <Badge kind="territory" value="bairro">{neighborhood.name}</Badge>
+              </Link>
               <Badge kind="status" value={property.status} />
               <Badge tone={property.criticality === "alta" ? "rust" : property.criticality === "media" ? "yellow" : "blue"}>{`criticidade ${property.criticality}`}</Badge>
             </div>
@@ -132,36 +197,103 @@ export function PropertyDetail({ bundle, returnHref, returnLabel }: PropertyDeta
         </PanelCard>
       </section>
 
-      <section className="grid gap-4 lg:grid-cols-3">
-        <PanelCard eyebrow="Situacao atual" density="compact">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(320px,1.05fr)]">
+        <PanelCard
+          eyebrow="endereco e status territorial"
+          title="O que e esse lugar"
+          description="Identificacao curta antes de entrar na prova fiscal e nos anexos."
+          density="compact"
+        >
           <div className="space-y-4">
-            <p className="text-sm leading-6 text-paper/74">{property.description}</p>
             <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-paper/45">Uso atual</p>
-                <p className="mt-2 text-sm leading-6 text-paper">{property.currentUse}</p>
+              <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">endereco oficial</p>
+                <p className="mt-2 text-sm font-semibold uppercase leading-5 tracking-[0.08em] text-paper">{property.address}</p>
               </div>
-              <div>
-                <p className="text-xs uppercase tracking-[0.18em] text-paper/45">Escala</p>
-                <p className="mt-2 text-sm leading-6 text-paper">{property.areaEstimate}</p>
+              <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">status territorial</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Badge kind="status" value={property.status} />
+                  <Badge kind="criticality" value={property.criticality}>{property.criticality}</Badge>
+                </div>
+              </div>
+            </div>
+            <p className="text-sm leading-6 text-paper/74">{property.description}</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">localizacao_status_final</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-paper">{locationStatusLabels[locationStatus]}</p>
+              </div>
+              <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">prioridade_revisao</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-paper">{priorityReview}</p>
+              </div>
+              <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">pronto_para_mapa</p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-paper">{readyForMap ? "sim" : "nao"}</p>
               </div>
             </div>
           </div>
         </PanelCard>
 
-        <PanelCard eyebrow="Contexto historico" density="compact">
-          {property.historicalContext ? (
-            <p className="text-sm leading-6 text-paper/74">{property.historicalContext}</p>
-          ) : (
-            <EmptyState
-              eyebrow="memoria pendente"
-              title="Sem contexto historico publicado"
-              description="A memoria desta ficha ainda nao foi expandida no acervo publico."
-            />
-          )}
+        <PanelCard
+          eyebrow="dado oficial vs estimado"
+          title="Quao confiavel e o dado"
+          description="Separacao rapida entre observacao oficial, estimativa e revisao."
+          density="compact"
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="border border-signal/24 bg-signal/8 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-signal">dado oficial</p>
+              <p className="mt-2 text-sm leading-6 text-paper/76">
+                Endereco, bairro e status territorial publicado na base do app. IPTU observado sera exibido quando o campo fiscal estiver integrado a ficha.
+              </p>
+            </div>
+            <div className="border border-glass/20 bg-glass/8 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-glass">dado estimado</p>
+              <p className="mt-2 text-sm leading-6 text-paper/76">
+                Valor venal e confianca fiscal saem da mesma camada final usada em mapa, bairros e circulacao. Quando nao ha vinculo especifico, a ficha usa o melhor recorte territorial disponivel e mantem a estimativa marcada para revisao.
+              </p>
+            </div>
+            <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">valor_venal_status</p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-paper">{estimatedValueStatusLabel}</p>
+            </div>
+            <div className="border border-concrete/14 bg-ink-alt/42 px-3 py-2.5">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">observacao metodologica</p>
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-paper">
+                {property.valueVenalConfidence ? `confianca ${property.valueVenalConfidence}` : "sem confianca fiscal publicada"}
+              </p>
+            </div>
+          </div>
+        </PanelCard>
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <PanelCard eyebrow="IPTU 2019 e 2025" title="Evolucao fiscal" density="compact">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">IPTU 2019</p>
+              <p className="mt-2 font-display text-2xl uppercase tracking-[0.08em] text-paper">{formatMoney(iptu2019)}</p>
+            </div>
+            <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">IPTU 2025</p>
+              <p className="mt-2 font-display text-2xl uppercase tracking-[0.08em] text-paper">{formatMoney(iptu2025)}</p>
+            </div>
+          </div>
         </PanelCard>
 
-        <PanelCard eyebrow="Impacto territorial" density="compact">
+        <PanelCard eyebrow="valor venal estimado" title="Valor de referencia" density="compact">
+          <div className="space-y-3">
+            <div className="border border-concrete/14 bg-ink-alt/42 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-paper/45">valor venal estimado</p>
+              <p className="mt-2 font-display text-2xl uppercase tracking-[0.08em] text-paper">{formatMoney(estimatedMarketValue)}</p>
+            </div>
+            <Badge kind="territory" value="recorte-ativo">{estimatedValueStatusLabel}</Badge>
+          </div>
+        </PanelCard>
+
+        <PanelCard eyebrow="importancia politica/territorial" title="Por que isso importa" density="compact">
           <div className="space-y-4">
             <p className="text-sm leading-6 text-paper/74">{property.socialUsePotential ?? "O impacto territorial ainda nao foi descrito em texto proprio, mas a ficha ja consolida risco, uso atual e prova publica para leitura de disputa."}</p>
             {property.legalNotes.length > 0 ? (

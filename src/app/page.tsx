@@ -2,380 +2,256 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   ArrowUpRight,
   Building2,
-  Eye,
-  FileText,
+  Compass,
+  Database,
   Hand,
   MapPinned,
-  MessageCircle,
-  ShieldAlert,
-  UsersRound,
+  SearchCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
-import { neighborhoods, properties, propertyReports } from "@/lib/data/mock-data";
 
-const stats = [
-  { label: "Imoveis mapeados", value: "56", note: "+3 este mes", icon: Building2 },
-  { label: "Bairros em leitura", value: "12", note: "3 novos bairros", icon: MapPinned },
-  { label: "Acoes abertas", value: "7", note: "2 em mobilizacao", icon: Hand },
-  { label: "Relatos recebidos", value: "18", note: "+5 esta semana", icon: FileText },
-  { label: "Pessoas envolvidas", value: "324", note: "na rede territorial", icon: UsersRound },
-];
-
-const situation = [
-  { label: "Imoveis mapeados", value: "56", icon: Building2 },
-  { label: "Relatos em circulacao", value: "18", icon: ShieldAlert },
-  { label: "Bairros em leitura", value: "12", icon: MapPinned },
-  { label: "Acoes abertas", value: "7", icon: Hand, alert: true },
-];
-
-const mapPins = [
-  { label: "Vila Santa Cecilia", left: "39%", top: "26%", tone: "yellow" },
-  { label: "Bela Vista", left: "47%", top: "45%", tone: "rust" },
-  { label: "Monte Castelo", left: "57%", top: "66%", tone: "blue" },
-  { label: "Aterrado", left: "73%", top: "43%", tone: "rust" },
-];
-
-const featured = [
+const entryPoints = [
   {
-    title: "Antigo Clube CSN Santa Cecilia",
-    place: "Vila Santa Cecilia",
-    tag: "Criticidade alta",
+    title: "Ver no mapa",
+    href: "/mapa",
+    description: "Comece pela distribuicao territorial dos imoveis ja localizados.",
+    action: "Abrir mapa",
+    icon: MapPinned,
+    tone: "signal",
+    stat: "31 pontos",
+    note: "geocodificados OK",
+  },
+  {
+    title: "Ver por bairro",
+    href: "/bairros",
+    description: "Entenda concentracao, leitura territorial e bairros mais pressionados.",
+    action: "Abrir bairros",
+    icon: Compass,
+    tone: "glass",
+    stat: "ranking",
+    note: "por registros e IPTU",
+  },
+  {
+    title: "Imoveis prioritarios",
+    href: "/imoveis",
+    description: "Veja o que merece revisao, checagem publica ou aprofundamento.",
+    action: "Ver imoveis",
+    icon: Building2,
     tone: "rust",
-    comments: 3,
-    actions: 2,
+    stat: "197 registros",
+    note: "base consolidada",
   },
   {
-    title: "Area da California",
-    place: "Aterrado",
-    tag: "Criticidade media",
-    tone: "orange",
-    comments: 2,
-    actions: 1,
-  },
-  {
-    title: "Predio administrativo antigo",
-    place: "Bairro 249",
-    tag: "Em disputa",
-    tone: "yellow",
-    comments: 1,
-    actions: 0,
-  },
-  {
-    title: "Terreno Rua 90",
-    place: "Monte Castelo",
-    tag: "Criticidade baixa",
-    tone: "blue",
-    comments: 0,
-    actions: 0,
+    title: "Agir",
+    href: "/agir",
+    description: "Saia da leitura para apoio, memoria, denuncia e mobilizacao.",
+    action: "Ver acoes",
+    icon: Hand,
+    tone: "paper",
+    stat: "acao",
+    note: "quando houver caminho",
   },
 ];
 
-const quickFilters = ["Imoveis publicos", "Imoveis ocupados", "Acao em andamento", "Prioridade de leitura"];
+const dataStatus = [
+  {
+    title: "Dado oficial",
+    description: "Inscricao, endereco e IPTU 2025 observados em arquivos e planilhas de origem.",
+    icon: ShieldCheck,
+    value: "190 IPTUs",
+    tone: "text-signal",
+  },
+  {
+    title: "Dado estimado",
+    description: "Valor venal calculado por regra de estimativa quando a fonte direta nao esta completa.",
+    icon: Database,
+    value: "valor venal",
+    tone: "text-glass",
+  },
+  {
+    title: "Dado em revisao",
+    description: "Geocodificacao ambigua, OCR manual ou endereco que precisa de checagem humana.",
+    icon: AlertTriangle,
+    value: "166 revisar",
+    tone: "text-rust-light",
+  },
+];
+
+function toneClass(tone: string) {
+  return cn(
+    tone === "signal" && "border-signal/55 text-signal hover:border-signal hover:bg-signal/10",
+    tone === "glass" && "border-glass/45 text-glass hover:border-glass hover:bg-glass/10",
+    tone === "rust" && "border-rust-light/50 text-rust-light hover:border-rust-light hover:bg-rust/10",
+    tone === "paper" && "border-paper/28 text-paper hover:border-paper/55 hover:bg-white/10",
+  );
+}
 
 export default function HomePage() {
-  const [criticality, setCriticality] = useState("todos");
-  const [bairro, setBairro] = useState("todos");
-  const [status, setStatus] = useState("todos");
-  const [checkedFilters, setCheckedFilters] = useState<string[]>(["Prioridade de leitura"]);
-
-  const activeFilterCount = useMemo(() => {
-    return [criticality, bairro, status].filter((item) => item !== "todos").length + checkedFilters.length;
-  }, [bairro, checkedFilters, criticality, status]);
-
-  function toggleQuickFilter(filter: string) {
-    setCheckedFilters((current) => (current.includes(filter) ? current.filter((item) => item !== filter) : [...current, filter]));
-  }
-
-  function clearFilters() {
-    setCriticality("todos");
-    setBairro("todos");
-    setStatus("todos");
-    setCheckedFilters([]);
-  }
-
   return (
     <div className="mx-auto w-full max-w-[1500px] px-3 pb-0 sm:px-5 lg:px-8">
-      <section className="grid overflow-hidden border-x border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.055),rgba(20,27,29,0.35))] shadow-[0_28px_90px_rgba(0,0,0,0.34)] backdrop-blur-xl lg:grid-cols-[minmax(0,2.18fr)_minmax(330px,0.96fr)]">
-        <div className="relative min-h-[330px] overflow-hidden border-b border-white/14 lg:min-h-[300px] lg:border-r lg:border-b-0">
-          <Image src="/csn-central.jpg" alt="Escritorio central da CSN em Volta Redonda" fill priority className="object-cover object-[62%_52%] saturate-[0.85] contrast-[1.06]" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,9,10,0.88)_0%,rgba(12,17,19,0.58)_42%,rgba(20,31,36,0.14)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_22%,rgba(255,255,255,0.13),transparent_22%),linear-gradient(135deg,rgba(169,188,196,0.17),transparent_38%)] mix-blend-screen" />
-          <div className="absolute inset-0 tt-noise opacity-60" />
-          <div className="relative z-10 flex min-h-[330px] max-w-3xl flex-col justify-center px-6 py-9 sm:px-10 lg:min-h-[300px] lg:px-12 lg:py-8">
-            <p className="mb-4 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Observatorio popular urbano</p>
-            <h1 className="font-display text-[2.85rem] uppercase leading-[0.98] tracking-[0.07em] text-paper drop-shadow-[0_6px_18px_rgba(0,0,0,0.42)] sm:text-[3.35rem] lg:text-[3.12rem] xl:text-[3.38rem]">
-              Mapear. Documentar. Agir.
-              <span className="block">O territorio e nosso.</span>
+      <section className="grid overflow-hidden border-x border-line bg-[linear-gradient(135deg,rgba(144,164,174,0.08),rgba(18,24,28,0.55))] shadow-panel backdrop-blur-xl lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
+        <div className="relative min-h-[270px] overflow-hidden border-b border-line lg:min-h-[365px] lg:border-r lg:border-b-0">
+          <Image src="/csn-central.jpg" alt="Escritorio central da CSN em Volta Redonda" fill priority className="object-cover object-[62%_52%] saturate-[0.82] contrast-[1.06]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(12,15,18,0.92)_0%,rgba(18,24,28,0.78)_48%,rgba(20,31,36,0.22)_100%)]" />
+          <div className="absolute inset-0 tt-noise opacity-65" />
+          <Image
+            src="/brand/territorio-symbol.png"
+            alt=""
+            width={150}
+            height={155}
+            className="pointer-events-none absolute bottom-5 right-5 hidden opacity-35 mix-blend-screen drop-shadow-[0_18px_40px_rgba(0,0,0,0.45)] md:block"
+          />
+
+          <div className="relative z-10 flex min-h-[270px] max-w-2xl flex-col justify-center px-6 py-7 sm:px-10 lg:min-h-[365px] lg:px-12">
+            <h1 className="font-display text-[2.25rem] uppercase leading-[0.98] tracking-[0.04em] text-paper drop-shadow-[0_6px_18px_rgba(0,0,0,0.42)] sm:text-[3.35rem] sm:tracking-[0.07em] lg:text-[3.1rem]">
+              Territorio Tomado
             </h1>
-            <p className="mt-5 max-w-2xl text-sm font-medium leading-6 text-paper/84 sm:text-base lg:max-w-xl">
-              Mapeamos, documentamos e ativamos a disputa social sobre os imoveis ligados a CSN em Volta Redonda. Memoria, prova
-              documental, leitura territorial e acao coletiva.
+            <p className="mt-3 max-w-xl text-sm font-semibold leading-6 text-paper/86 sm:text-lg">
+              Um mapa publico para localizar, comparar e disputar o destino dos imoveis ligados a CSN em Volta Redonda.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link href="/mapa" className="tt-button tt-button-primary min-w-40 text-xs">
-                Abrir mapa
+                Ver no mapa
               </Link>
-              <Link href="/imoveis" className="tt-button tt-button-secondary min-w-40 text-xs">
-                Ver imoveis
+              <Link href="/bairros" className="tt-button tt-button-secondary min-w-40 text-xs">
+                Comecar por bairro
+              </Link>
+              <Link href="/circulacao" className="tt-button tt-button-ghost min-w-40 text-xs">
+                Cards publicos
               </Link>
             </div>
           </div>
         </div>
 
-        <aside className="tt-rule-grid bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(11,14,15,0.44))] backdrop-blur-xl">
-          <div className="px-6 py-6 lg:px-7">
-            <p className="mb-5 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Situacao geral</p>
-            <div className="grid grid-cols-2 overflow-hidden tt-liquid">
-              {situation.map((item, index) => {
-                const Icon = item.icon;
-
-                return (
-                  <div key={item.label} className={cn("min-h-24 border-white/10 p-5", index % 2 === 0 ? "border-r" : "", index < 2 ? "border-b" : "")}>
-                    <div className="flex items-center gap-4">
-                      <Icon className={cn("h-8 w-8", item.alert ? "text-rust-light" : "text-glass/78")} strokeWidth={1.8} />
-                      <div>
-                        <p className="font-display text-4xl leading-none tracking-[0.08em] text-paper">{item.value}</p>
-                        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-paper/62">{item.label}</p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+        <aside className="tt-rule-grid hidden bg-[linear-gradient(135deg,rgba(144,164,174,0.05),rgba(18,24,28,0.72))] px-6 py-6 backdrop-blur-xl lg:block lg:px-7">
+          <div className="flex h-full flex-col justify-between gap-7">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.24em] text-signal">Por onde comecar</p>
+              <h2 className="mt-3 font-display text-4xl uppercase leading-none tracking-[0.08em] text-paper sm:text-5xl">
+                Escolha uma porta.
+              </h2>
+              <p className="mt-4 text-sm leading-6 text-paper/68">
+                Se voce quer localizar, comparar, priorizar ou agir, a entrada certa esta abaixo. Menos discurso, mais caminho.
+              </p>
             </div>
-            <Link href="/bairros" className="mt-5 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-paper/78 hover:text-signal">
-              Ver observatorio completo <ArrowUpRight className="h-3.5 w-3.5" />
-            </Link>
-          </div>
-        </aside>
-      </section>
-
-      <section className="grid border-x border-t border-white/14 bg-[linear-gradient(180deg,rgba(13,20,22,0.84),rgba(8,11,12,0.92))] lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div>
-          <div className="flex flex-wrap items-center gap-3 border-b border-white/14 bg-white/[0.035] px-5 py-3.5 backdrop-blur-xl">
-            <button
-              type="button"
-              onClick={clearFilters}
-              className={cn("h-9 border px-4 text-[11px] font-black uppercase tracking-[0.16em] transition", activeFilterCount ? "border-signal bg-signal text-ink-deep" : "border-signal/70 text-signal")}
-            >
-              Todos
-            </button>
-            <select value={criticality} onChange={(event) => setCriticality(event.target.value)} className="tt-filter">
-              <option value="todos">Criticidade: todos</option>
-              <option value="alta">Criticidade: alta</option>
-              <option value="media">Criticidade: media</option>
-              <option value="baixa">Criticidade: baixa</option>
-            </select>
-            <select value={bairro} onChange={(event) => setBairro(event.target.value)} className="tt-filter">
-              <option value="todos">Bairro: todos</option>
-              {neighborhoods.map((item) => (
-                <option key={item.id} value={item.slug}>
-                  Bairro: {item.name}
-                </option>
+            <div className="grid grid-cols-3 border border-line bg-[rgba(18,24,28,0.45)]">
+              {[
+                ["197", "registros"],
+                ["31", "no mapa"],
+                ["166", "em revisao"],
+              ].map(([value, label], index) => (
+                <div key={label} className={cn("px-4 py-4", index > 0 && "border-l border-line")}>
+                  <p className="font-display text-4xl leading-none tracking-[0.08em] text-paper">{value}</p>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.15em] text-paper/55">{label}</p>
+                </div>
               ))}
-            </select>
-            <select value={status} onChange={(event) => setStatus(event.target.value)} className="tt-filter">
-              <option value="todos">Status: todos</option>
-              <option value="vazio">Vazio</option>
-              <option value="em-disputa">Em disputa</option>
-              <option value="uso-institucional">Uso institucional</option>
-            </select>
-            <button type="button" onClick={clearFilters} className="h-9 px-3 text-[11px] font-bold uppercase tracking-[0.18em] text-paper/50 hover:text-paper">
-              X limpar filtros
-            </button>
-          </div>
-
-          <div className="relative min-h-[295px] overflow-hidden border-b border-white/14 bg-[#101718]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_47%_46%,rgba(31,83,95,0.62),transparent_16%),radial-gradient(circle_at_26%_30%,rgba(180,192,187,0.12),transparent_19%),linear-gradient(35deg,transparent_0_48%,rgba(210,222,217,0.2)_49%_50%,transparent_51%),linear-gradient(150deg,transparent_0_58%,rgba(165,180,177,0.15)_59%_60%,transparent_61%)]" />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),transparent_42%,rgba(0,0,0,0.18))]" />
-            <div className="absolute inset-0 tt-map-grid opacity-90" />
-            <div className="absolute left-5 top-24 z-10 grid border border-white/24 bg-black/35 text-paper shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] backdrop-blur-lg">
-              <button className="h-7 w-7 border-b border-concrete/20 text-lg">+</button>
-              <button className="h-7 w-7 text-lg">-</button>
             </div>
-            {mapPins.map((pin) => (
-              <div key={pin.label} className="absolute z-10" style={{ left: pin.left, top: pin.top }}>
-                <div
-                  className={cn(
-                    "h-4 w-4 rotate-45 border-2 bg-ink-deep/85",
-                    pin.tone === "yellow" && "border-signal",
-                    pin.tone === "rust" && "border-rust-light",
-                    pin.tone === "blue" && "border-glass",
-                  )}
-                />
-              </div>
-            ))}
-            {["Vila Santa Cecilia", "Bela Vista", "Monte Castelo", "Santa Rita do Zarur", "Aterrado"].map((label, index) => (
-              <span
-                key={label}
-                className="absolute z-10 max-w-28 text-[11px] font-black uppercase leading-4 tracking-[0.12em] text-paper drop-shadow"
-                style={{
-                  left: ["24%", "35%", "54%", "70%", "78%"][index],
-                  top: ["32%", "43%", "55%", "24%", "49%"][index],
-                }}
-              >
-                {label}
-              </span>
-            ))}
           </div>
-
-          <div className="grid border-b border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(169,188,196,0.055))] backdrop-blur-xl sm:grid-cols-2 lg:grid-cols-5">
-            {stats.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <div key={item.label} className="flex min-h-24 items-center gap-4 border-r border-white/12 px-5 py-4 last:border-r-0">
-                  <Icon className="h-8 w-8 text-paper/52" strokeWidth={1.7} />
-                  <div>
-                    <p className="font-display text-4xl leading-none tracking-[0.08em] text-paper">{item.value}</p>
-                    <p className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-paper/78">{item.label}</p>
-                    <p className="text-[10px] text-paper/48">{item.note}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <aside className="border-l border-white/14 bg-[linear-gradient(145deg,rgba(255,255,255,0.08),rgba(13,17,18,0.58))] px-6 py-5 backdrop-blur-2xl">
-          <p className="mb-4 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Legenda de criticidade</p>
-          <div className="space-y-3 border-b border-concrete/12 pb-5">
-            {[
-              ["Criticidade alta", "border-rust-light"],
-              ["Criticidade media", "border-rust"],
-              ["Em disputa", "border-signal"],
-              ["Criticidade baixa", "border-glass"],
-              ["Sem dados", "border-paper/50"],
-            ].map(([label, tone]) => (
-              <div key={label} className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.14em] text-paper/64">
-                <span className={cn("h-3 w-3 rotate-45 border-2", tone)} />
-                {label}
-              </div>
-            ))}
-          </div>
-          <p className="mb-4 mt-5 text-[11px] font-black uppercase tracking-[0.24em] text-signal">Filtros rapidos</p>
-          <div className="space-y-3">
-            {quickFilters.map((filter) => (
-              <label key={filter} className="flex cursor-pointer items-center gap-3 text-[11px] font-bold uppercase tracking-[0.13em] text-paper/62">
-                <input
-                  type="checkbox"
-                  checked={checkedFilters.includes(filter)}
-                  onChange={() => toggleQuickFilter(filter)}
-                  className="h-3.5 w-3.5 appearance-none border border-paper/60 bg-transparent checked:border-signal checked:bg-signal"
-                />
-                {filter}
-              </label>
-            ))}
-          </div>
-          <Link href="/mapa" className="mt-14 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.2em] text-paper/70 hover:text-signal">
-            X ver mapa completo <ArrowUpRight className="h-3.5 w-3.5" />
-          </Link>
         </aside>
       </section>
 
-      <section className="grid border-x border-t border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.05),rgba(10,13,14,0.88))] lg:grid-cols-[minmax(0,1.55fr)_minmax(360px,0.9fr)]">
-        <div className="border-b border-white/14 px-5 py-5 lg:border-r lg:border-b-0">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-[12px] font-black uppercase tracking-[0.24em] text-signal">Imoveis em destaque</p>
-            <Link href="/imoveis" className="text-[10px] font-black uppercase tracking-[0.2em] text-paper/70 hover:text-signal">
-              Ver todos <ArrowUpRight className="ml-1 inline h-3 w-3" />
-            </Link>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {featured.map((item, index) => (
-              <article key={item.title} className="tt-liquid-soft overflow-hidden transition hover:border-white/22 hover:bg-white/10">
-                <div className="relative h-32 overflow-hidden">
-                  <Image src="/csn-central.jpg" alt="" fill className="object-cover" sizes="(min-width: 1280px) 25vw, 50vw" />
-                  <div className="absolute inset-0 bg-black/35 grayscale" />
-                </div>
-                <div className="p-3">
-                  <span
-                    className={cn(
-                      "inline-flex border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.14em]",
-                      item.tone === "rust" && "border-rust-light text-rust-light",
-                      item.tone === "orange" && "border-rust text-rust-light",
-                      item.tone === "yellow" && "border-signal text-signal",
-                      item.tone === "blue" && "border-glass text-glass",
-                    )}
-                  >
-                    {item.tag}
+      <section className="grid border-x border-t border-line bg-[linear-gradient(180deg,rgba(18,24,28,0.8),rgba(12,15,18,0.92))] md:grid-cols-2 xl:grid-cols-4">
+        {entryPoints.map((item, index) => {
+          const Icon = item.icon;
+
+          return (
+            <Link
+              key={item.title}
+              href={item.href}
+              className={cn(
+                "group flex min-h-[250px] flex-col justify-between border-line p-5 transition hover:bg-white/[0.075] md:min-h-[270px]",
+                index % 2 === 0 ? "md:border-r" : "",
+                index < 2 ? "border-b xl:border-b-0" : "",
+                index > 0 ? "xl:border-l" : "",
+              )}
+            >
+              <div>
+                <div className="flex items-start justify-between gap-4">
+                  <span className={cn("inline-flex h-12 w-12 items-center justify-center border bg-black/24 transition", toneClass(item.tone))}>
+                    <Icon className="h-6 w-6" strokeWidth={1.8} />
                   </span>
-                  <h2 className="mt-2 min-h-12 font-display text-xl uppercase leading-6 tracking-[0.08em] text-paper">{item.title}</h2>
-                  <p className="mt-1 text-[11px] uppercase tracking-[0.14em] text-paper/56">{item.place}</p>
-                  <div className="mt-4 flex gap-4 text-paper/52">
-                    <span className="inline-flex items-center gap-1 text-xs">
-                      <MessageCircle className="h-4 w-4" /> {item.comments}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-xs">
-                      <Hand className="h-4 w-4" /> {item.actions + index}
-                    </span>
-                  </div>
+                  <ArrowUpRight className="h-5 w-5 text-paper/35 transition group-hover:text-signal" />
                 </div>
-              </article>
-            ))}
+                <h2 className="mt-5 font-display text-3xl uppercase leading-8 tracking-[0.08em] text-paper">{item.title}</h2>
+                <p className="mt-3 max-w-sm text-sm leading-5 text-paper/66">{item.description}</p>
+              </div>
+              <div className="mt-8 flex items-end justify-between gap-4 border-t border-line pt-4">
+                <div>
+                  <p className="font-display text-2xl uppercase tracking-[0.08em] text-paper">{item.stat}</p>
+                  <p className="mt-1 text-[10px] font-black uppercase tracking-[0.15em] text-paper/48">{item.note}</p>
+                </div>
+                <span className="text-[11px] font-black uppercase tracking-[0.18em] text-signal">{item.action}</span>
+              </div>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section className="grid border-x border-t border-line bg-[linear-gradient(135deg,rgba(144,164,174,0.06),rgba(18,24,28,0.88))] lg:grid-cols-[0.82fr_1.18fr]">
+        <div className="border-b border-line px-6 py-6 lg:border-r lg:border-b-0">
+          <div className="flex items-center gap-3 text-signal">
+            <SearchCheck className="h-6 w-6" strokeWidth={1.8} />
+            <p className="text-[11px] font-black uppercase tracking-[0.24em]">Como ler os dados</p>
           </div>
+          <h2 className="mt-4 font-display text-4xl uppercase leading-none tracking-[0.08em] text-paper">
+            Nem todo ponto tem o mesmo peso.
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-paper/68">
+            A base vem de arquivos consolidados em data/output. O app separa o que foi observado, o que foi estimado e o que ainda precisa revisao.
+          </p>
         </div>
 
-        <div className="px-5 py-5">
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-[12px] font-black uppercase tracking-[0.24em] text-signal">Agir agora</p>
-            <Link href="/agir" className="text-[10px] font-black uppercase tracking-[0.2em] text-paper/70 hover:text-signal">
-              Ver todas as acoes <ArrowUpRight className="ml-1 inline h-3 w-3" />
-            </Link>
-          </div>
-          <div className="grid gap-4">
-            <article className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div className="relative min-h-36 overflow-hidden border border-concrete/14">
-                <Image src="/csn-central.jpg" alt="" fill className="object-cover" sizes="160px" />
-                <div className="absolute inset-0 bg-ink-deep/28" />
-                <p className="absolute left-3 top-3 max-w-28 font-display text-xl uppercase leading-5 tracking-[0.05em] text-paper">
-                  Reabertura Clube CSN Santa Cecilia
-                </p>
-              </div>
-              <div className="border-b border-concrete/12 pb-4">
-                <span className="border border-signal px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-signal">Campanha</span>
-                <h3 className="mt-2 font-display text-2xl uppercase leading-6 tracking-[0.08em] text-paper">Reabertura popular do Clube CSN Santa Cecilia</h3>
-                <p className="mt-2 text-sm leading-5 text-paper/66">Pressao publica para transformar abandono em pauta coletiva e abrir caminho para uso social do espaco.</p>
-                <div className="mt-4 h-1 bg-concrete/16">
-                  <div className="h-full w-[78%] bg-signal" />
-                </div>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-paper/52">
-                  <span>127 apoiam</span>
-                  <span className="font-black text-signal">78%</span>
-                </div>
-              </div>
-            </article>
-            <article className="grid gap-4 sm:grid-cols-[160px_1fr]">
-              <div className="relative min-h-28 overflow-hidden border border-concrete/14">
-                <Image src="/csn-central.jpg" alt="" fill className="object-cover object-left" sizes="160px" />
-                <div className="absolute inset-0 bg-black/45" />
-              </div>
-              <div>
-                <span className="border border-rust-light px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-rust-light">Mutirao</span>
-                <h3 className="mt-2 font-display text-xl uppercase leading-6 tracking-[0.08em] text-paper">Mutirao de memoria e prova</h3>
-                <p className="mt-1 text-sm leading-5 text-paper/66">Chamado para reunir fotos, relatos e documentos sobre os imoveis da CSN.</p>
-                <p className="mt-3 text-[11px] text-paper/52">{propertyReports.length * properties.length + 15} participantes</p>
-              </div>
-            </article>
-          </div>
+        <div className="grid md:grid-cols-3">
+          {dataStatus.map((item, index) => {
+            const Icon = item.icon;
+
+            return (
+              <article key={item.title} className={cn("min-h-48 px-5 py-6", index > 0 && "border-t border-line md:border-t-0 md:border-l")}>
+                <Icon className={cn("h-7 w-7", item.tone)} strokeWidth={1.8} />
+                <p className="mt-5 font-display text-2xl uppercase leading-7 tracking-[0.08em] text-paper">{item.title}</p>
+                <p className={cn("mt-2 text-[11px] font-black uppercase tracking-[0.16em]", item.tone)}>{item.value}</p>
+                <p className="mt-3 text-sm leading-5 text-paper/62">{item.description}</p>
+              </article>
+            );
+          })}
         </div>
       </section>
 
-      <footer className="grid items-center gap-4 border border-white/14 bg-[linear-gradient(135deg,rgba(255,255,255,0.1),rgba(169,188,196,0.045))] px-6 py-5 text-[11px] uppercase tracking-[0.16em] text-paper/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] backdrop-blur-xl sm:grid-cols-[auto_1fr_auto]">
-        <span className="inline-flex h-11 w-16 items-center justify-center border border-signal/65 text-signal">
-          <Eye className="h-5 w-5" />
-        </span>
+      <section className="grid border-x border-t border-line bg-[var(--background-alt)] lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="px-6 py-6">
+          <p className="text-[11px] font-black uppercase tracking-[0.24em] text-signal">Clique agora</p>
+          <h2 className="mt-3 font-display text-3xl uppercase leading-8 tracking-[0.08em] text-paper">
+            Quer uma resposta rapida? Abra o mapa. Quer contexto? Entre por bairro.
+          </h2>
+        </div>
+        <div className="grid gap-3 border-t border-line px-6 py-6 sm:grid-cols-2 lg:border-t-0 lg:border-l lg:grid-cols-1">
+          <Link href="/mapa" className="tt-button tt-button-primary justify-center text-xs">
+            Abrir mapa
+          </Link>
+          <Link href="/agir" className="tt-button tt-button-secondary justify-center text-xs">
+            Ver acoes
+          </Link>
+        </div>
+      </section>
+
+      <footer className="grid items-center gap-4 border border-line bg-[linear-gradient(135deg,rgba(144,164,174,0.06),rgba(18,24,28,0.45))] px-6 py-5 text-[11px] uppercase tracking-[0.16em] text-paper/54 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] backdrop-blur-xl sm:grid-cols-[auto_1fr_auto]">
+        <Link href="/" className="relative block h-16 w-44 overflow-hidden border border-signal/35 bg-black/30">
+          <Image src="/brand/territorio-lockup.png" alt="Territorio Tomado" fill sizes="176px" className="object-contain" />
+        </Link>
         <p>
-          <strong className="block text-paper/70">Observatorio popular urbano independente</strong>
-          Mapeamento colaborativo · memoria coletiva · acao territorial
+          <strong className="block text-paper/70">Mapa publico dos imoveis ligados a CSN</strong>
+          dado oficial · estimativa declarada · revisao aberta
         </p>
         <div className="flex flex-wrap gap-5 text-paper/58">
-          <Link href="/bairros">Sobre</Link>
-          <Link href="/mapa">Dados</Link>
-          <Link href="/enviar">Contato</Link>
+          <Link href="/bairros">Bairros</Link>
+          <Link href="/circulacao">Circulacao</Link>
+          <Link href="/imoveis">Imoveis</Link>
+          <Link href="/enviar">Enviar</Link>
         </div>
       </footer>
     </div>

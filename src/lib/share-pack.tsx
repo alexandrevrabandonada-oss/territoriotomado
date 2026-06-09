@@ -9,6 +9,9 @@ export interface PropertySharePackData {
   status: string;
   criticality: string;
   phrase: string;
+  locationStatus?: string;
+  valueStatus?: string;
+  priorityReview?: string;
 }
 
 export interface ActionSharePackData {
@@ -17,6 +20,17 @@ export interface ActionSharePackData {
   neighborhoodName: string;
   ctaLabel: string;
   phrase: string;
+}
+
+export interface RankingSharePackData {
+  title: string;
+  label: string;
+  metric: string;
+  metricLabel: string;
+  subject: string;
+  context: string;
+  sourceLabel: string;
+  reviewLabel: string;
 }
 
 const variantConfig: Record<
@@ -123,9 +137,8 @@ function Shell({
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             <div
               style={{
-                display: "inline-flex",
+                display: "flex",
                 alignItems: "center",
-                width: "fit-content",
                 border: "1px solid rgba(211, 217, 213, 0.22)",
                 background: "rgba(70, 84, 93, 0.78)",
                 color: "#ffd76a",
@@ -202,6 +215,9 @@ export function PropertySharePack({ data, variant }: { data: PropertySharePackDa
           <Pill tone="signal">{data.neighborhoodName}</Pill>
           <Pill tone="paper">{`status ${data.status}`}</Pill>
           <Pill tone="rust">{`criticidade ${data.criticality}`}</Pill>
+          {data.locationStatus ? <Pill tone="paper">{data.locationStatus}</Pill> : null}
+          {data.valueStatus ? <Pill tone="signal">{data.valueStatus}</Pill> : null}
+          {data.priorityReview ? <Pill tone="rust">{`revisao ${data.priorityReview}`}</Pill> : null}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
@@ -226,6 +242,74 @@ export function PropertySharePack({ data, variant }: { data: PropertySharePackDa
             }}
           >
             {data.phrase}
+          </div>
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
+export function RankingSharePack({ data, variant }: { data: RankingSharePackData; variant: ShareVariant }) {
+  const config = variantConfig[variant];
+
+  return (
+    <Shell variant={variant} accentLabel={data.label}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "22px" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+          <Pill tone="signal">{data.sourceLabel}</Pill>
+          <Pill tone="rust">{data.reviewLabel}</Pill>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+          <div
+            style={{
+              fontSize: variant === "story" ? 46 : 38,
+              lineHeight: 1,
+              fontWeight: 900,
+              letterSpacing: "0.2em",
+              textTransform: "uppercase",
+              color: "#ffd76a",
+            }}
+          >
+            {data.title}
+          </div>
+          <div
+            style={{
+              fontSize: config.titleSize,
+              lineHeight: 0.94,
+              fontWeight: 900,
+              letterSpacing: "0.04em",
+              textTransform: "uppercase",
+              maxWidth: variant === "story" ? 880 : 980,
+            }}
+          >
+            {data.subject}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              border: "1px solid rgba(233, 173, 18, 0.38)",
+              background: "rgba(233, 173, 18, 0.12)",
+              padding: "18px 22px",
+            }}
+          >
+            <div style={{ fontSize: variant === "story" ? 54 : 48, lineHeight: 1, fontWeight: 900, color: "#ffd76a" }}>
+              {data.metric}
+            </div>
+            <div style={{ marginTop: 8, fontSize: 18, letterSpacing: "0.18em", textTransform: "uppercase", color: "rgba(242, 244, 239, 0.72)" }}>
+              {data.metricLabel}
+            </div>
+          </div>
+          <div
+            style={{
+              fontSize: config.phraseSize,
+              lineHeight: 1.16,
+              color: "rgba(242, 244, 239, 0.84)",
+              maxWidth: variant === "story" ? 780 : 900,
+            }}
+          >
+            {data.context}
           </div>
         </div>
       </div>
@@ -266,9 +350,8 @@ export function ActionSharePack({
           </div>
           <div
             style={{
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              width: "fit-content",
               border: "1px solid rgba(211, 217, 213, 0.2)",
               background: "rgba(233, 173, 18, 0.12)",
               color: "#ffd76a",
@@ -294,9 +377,8 @@ function Pill({ tone, children }: { tone: "signal" | "paper" | "rust"; children:
   return (
     <div
       style={{
-        display: "inline-flex",
+        display: "flex",
         alignItems: "center",
-        width: "fit-content",
         border: "1px solid rgba(211, 217, 213, 0.18)",
         background,
         color,

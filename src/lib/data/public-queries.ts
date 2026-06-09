@@ -1,9 +1,12 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getFinalNeighborhoodStats, getFinalSignalForProperty, matchNeighborhoodStat, type FinalSignalRow } from "@/lib/data/final-signals";
 import { PROPERTY_DOC_BUCKET, PROPERTY_IMAGE_BUCKET } from "@/lib/data/media-constants";
 import type {
   Criticality,
+  LocationStatus,
   Neighborhood,
+  PriorityReview,
   Property,
   PropertyAction,
   PropertyBundle,
@@ -20,6 +23,9 @@ export interface PropertyFilters {
   status?: PropertyStatus | "todos";
   neighborhood?: string | "todos";
   criticality?: Criticality | "todos";
+  readyForMap?: "sim" | "nao" | "todos";
+  priorityReview?: PriorityReview | "todos";
+  locationStatus?: LocationStatus | "todos";
 }
 
 export interface PropertyMapFeature {
@@ -28,10 +34,14 @@ export interface PropertyMapFeature {
   title: string;
   neighborhoodId: string;
   neighborhoodName: string;
+  neighborhoodSlug?: string;
   status: PropertyStatus;
   criticality: Criticality;
   lat: number;
   lng: number;
+  readyForMap: boolean;
+  priorityReview: PriorityReview;
+  locationStatus: LocationStatus;
 }
 
 export interface PublishedPropertyOption {
@@ -52,6 +62,7 @@ export interface PublishedNeighborhoodSummary {
   proofPropertyCount: number;
   publicDocumentCount: number;
   priorityPropertyCount: number;
+  readyForMapCount: number;
   narrative: string;
 }
 
@@ -89,6 +100,7 @@ export interface PublishedActionFeedItem {
 interface PropertyRow {
   id: string;
   slug: string;
+  inscricao_imobiliaria?: string | null;
   title: string;
   address: string;
   neighborhood_id: string;
@@ -106,12 +118,28 @@ interface PropertyRow {
   community_url: string | null;
   dossier_url: string | null;
   external_reference_url: string | null;
+  localizacao_status_final?: string | null;
+  pronto_para_mapa?: boolean | null;
+  prioridade_revisao?: PriorityReview | null;
   neighborhoods?: {
     id: string;
     name: string;
     slug: string;
     description: string | null;
   } | null;
+}
+
+interface PropertyFiscalSignalRow {
+  property_id: string | null;
+  inscricao_imobiliaria?: string | null;
+  iptu_2019_lancado: number | null;
+  iptu_2025_observado: number | null;
+  valor_venal_estimado: number | null;
+  valor_venal_status: string | null;
+  confianca_valor_venal: string | null;
+  localizacao_status_final?: string | null;
+  pronto_para_mapa?: boolean | null;
+  prioridade_revisao?: PriorityReview | null;
 }
 
 interface PropertyImageRow {
@@ -207,10 +235,12 @@ function mapProperty(row: PropertyRow): Property {
   return {
     id: row.id,
     slug: row.slug,
+    inscricaoImobiliaria: row.inscricao_imobiliaria ?? undefined,
     title: row.title,
     address: row.address,
     neighborhoodId: row.neighborhood_id,
     neighborhoodName: row.neighborhoods?.name ?? "Nao mapeado",
+    neighborhoodSlug: row.neighborhoods?.slug ?? undefined,
     status: row.current_status,
     criticality: row.criticality,
     lat: row.latitude,
@@ -225,6 +255,9 @@ function mapProperty(row: PropertyRow): Property {
     communityUrl: row.community_url ?? undefined,
     dossierUrl: row.dossier_url ?? undefined,
     externalReferenceUrl: row.external_reference_url ?? undefined,
+    readyForMap: row.pronto_para_mapa ?? undefined,
+    priorityReview: row.prioridade_revisao ?? undefined,
+    locationStatus: normalizePersistedLocationStatus(row.localizacao_status_final),
   };
 }
 
@@ -330,6 +363,113 @@ function buildNeighborhoodNarrative(name: string, propertyCount: number, critica
   return `${name} concentra ${propertyCount} imoveis publicados, ${criticalPropertyCount} criticos e ${openActionCount} frentes abertas.`;
 }
 
+function derivePriorityReview(property: Pick<Property, "criticality" | "hasProof" | "hasOpenAction" | "isPriority">): PriorityReview {
+  if (property.isPriority || property.criticality === "alta") {
+    return "alta";
+  }
+
+  if (property.criticality === "media" || property.hasOpenAction || !property.hasProof) {
+    return "media";
+  }
+
+  return "baixa";
+}
+
+function deriveLocationStatus(property: Pick<Property, "lat" | "lng" | "hasProof" | "hasMedia" | "criticality">): LocationStatus {
+  if (!Number.isFinite(property.lat) || !Number.isFinite(property.lng)) {
+    return "pendente";
+  }
+
+  if (property.hasProof && property.hasMedia) {
+    return "confirmada";
+  }
+
+  if (property.criticality === "alta" && !property.hasProof) {
+    return "ambigua";
+  }
+
+  return "aproximada";
+}
+
+function normalizePersistedLocationStatus(value: string | null | undefined): LocationStatus | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  if (value.includes("confirmada")) {
+    return "confirmada";
+  }
+
+  if (value.includes("ambigua")) {
+    return "ambigua";
+  }
+
+  if (value.includes("pendente")) {
+    return "pendente";
+  }
+
+  return "aproximada";
+}
+
+function enrichTerritorialFields(property: Property): Property {
+  const readyForMap = property.readyForMap ?? (Number.isFinite(property.lat) && Number.isFinite(property.lng));
+  const priorityReview = property.priorityReview ?? derivePriorityReview(property);
+  const locationStatus = property.locationStatus ?? deriveLocationStatus(property);
+
+  return {
+    ...property,
+    readyForMap,
+    priorityReview,
+    locationStatus,
+  };
+}
+
+function applyFiscalSignal(property: Property, signal: PropertyFiscalSignalRow | FinalSignalRow | undefined): Property {
+  if (!signal) {
+    return property;
+  }
+
+  if ("estimatedMarketValue" in signal) {
+    return {
+      ...property,
+      readyForMap: property.readyForMap ?? signal.readyForMap,
+      priorityReview: property.priorityReview ?? signal.priorityReview,
+      locationStatus: property.locationStatus ?? signal.locationStatus,
+      iptu2019: signal.iptu2019 ?? undefined,
+      iptu2025: signal.iptu2025 ?? undefined,
+      estimatedMarketValue: signal.estimatedMarketValue ?? undefined,
+      valueVenalStatus: signal.valueVenalStatus,
+      valueVenalConfidence: signal.valueVenalConfidence,
+    };
+  }
+
+  return {
+    ...property,
+    iptu2019: typeof signal.iptu_2019_lancado === "number" ? signal.iptu_2019_lancado : undefined,
+    iptu2025: typeof signal.iptu_2025_observado === "number" ? signal.iptu_2025_observado : undefined,
+    estimatedMarketValue: typeof signal.valor_venal_estimado === "number" ? signal.valor_venal_estimado : undefined,
+    valueVenalStatus: signal.valor_venal_status ?? property.valueVenalStatus,
+    valueVenalConfidence: signal.confianca_valor_venal ?? property.valueVenalConfidence,
+    locationStatus: normalizePersistedLocationStatus(signal.localizacao_status_final) ?? property.locationStatus,
+    readyForMap: signal.pronto_para_mapa ?? property.readyForMap,
+    priorityReview: signal.prioridade_revisao ?? property.priorityReview,
+  };
+}
+
+async function applyFinalSignals(properties: Property[], fiscalSignals: Map<string, PropertyFiscalSignalRow>) {
+  return Promise.all(
+    properties.map(async (property) => {
+      const persistedSignal = fiscalSignals.get(property.id) ?? (property.inscricaoImobiliaria ? fiscalSignals.get(property.inscricaoImobiliaria) : undefined);
+
+      if (persistedSignal) {
+        return applyFiscalSignal(property, persistedSignal);
+      }
+
+      return applyFiscalSignal(property, await getFinalSignalForProperty(property));
+    }),
+  );
+}
+
 async function getSupabaseOrThrow() {
   const supabase = await createSupabaseServerClient();
 
@@ -381,7 +521,7 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
   let query = supabase
     .from("properties")
     .select(
-      "id, slug, title, address, neighborhood_id, excerpt, description, current_use, area_estimate, current_status, criticality, latitude, longitude, legal_notes, tags, mission_url, community_url, dossier_url, external_reference_url, neighborhoods(id, name, slug, description)",
+      "*, neighborhoods(id, name, slug, description)",
     )
     .eq("is_public", true)
     .order("title", { ascending: true });
@@ -411,7 +551,7 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
   }
 
   const propertyIds = properties.map((property) => property.id);
-  const [actionsResult, documentsResult, imagesResult, reportsResult] = await Promise.all([
+  const [actionsResult, documentsResult, imagesResult, reportsResult, fiscalSignalsResult] = await Promise.all([
     supabase
       .from("property_actions")
       .select("property_id, is_priority")
@@ -433,6 +573,11 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
       .in("property_id", propertyIds)
       .eq("moderation_status", "aprovado")
       .eq("editorial_destination", "relato_publico"),
+    supabase
+      .from("property_fiscal_signals")
+      .select("property_id, inscricao_imobiliaria, iptu_2019_lancado, iptu_2025_observado, valor_venal_estimado, valor_venal_status, confianca_valor_venal, localizacao_status_final, pronto_para_mapa, prioridade_revisao")
+      .or(`property_id.in.(${propertyIds.join(",")}),inscricao_imobiliaria.in.(${properties.map((property) => property.inscricaoImobiliaria).filter(Boolean).join(",") || "__none__"})`)
+      .returns<PropertyFiscalSignalRow[]>(),
   ]);
 
   for (const result of [actionsResult, documentsResult, imagesResult, reportsResult]) {
@@ -446,6 +591,7 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
   const publicDocumentCounts = new Map<string, number>();
   const publicImageCounts = new Map<string, number>();
   const publicReportCounts = new Map<string, number>();
+  const fiscalSignals = new Map<string, PropertyFiscalSignalRow>();
 
   for (const row of actionsResult.data ?? []) {
     openActionCounts.set(row.property_id, (openActionCounts.get(row.property_id) ?? 0) + 1);
@@ -471,7 +617,16 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
     publicReportCounts.set(row.property_id, (publicReportCounts.get(row.property_id) ?? 0) + 1);
   }
 
-  return properties.map((property) => {
+  for (const row of fiscalSignalsResult.error ? [] : fiscalSignalsResult.data ?? []) {
+    if (row.property_id && !fiscalSignals.has(row.property_id)) {
+      fiscalSignals.set(row.property_id, row);
+    }
+    if (row.inscricao_imobiliaria && !fiscalSignals.has(row.inscricao_imobiliaria)) {
+      fiscalSignals.set(row.inscricao_imobiliaria, row);
+    }
+  }
+
+  const propertiesWithCounts = properties.map((property) => {
     const openActionCount = openActionCounts.get(property.id) ?? 0;
     const publicDocumentCount = publicDocumentCounts.get(property.id) ?? 0;
     const publicImageCount = publicImageCounts.get(property.id) ?? 0;
@@ -491,6 +646,8 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
       isPriority: priorityFlags.get(property.id) ?? property.criticality === "alta",
     };
   });
+
+  return (await applyFinalSignals(propertiesWithCounts, fiscalSignals)).map(enrichTerritorialFields);
 }
 
 export async function getPublishedPropertyOptions(): Promise<PublishedPropertyOption[]> {
@@ -573,7 +730,18 @@ export async function getPublishedActionFeed(): Promise<PublishedActionFeedItem[
 }
 
 export async function getPublishedMapProperties(filters: PropertyFilters = {}): Promise<PropertyMapFeature[]> {
-  const properties = await getPublishedProperties(filters);
+  const properties = (await getPublishedProperties(filters)).filter((property) => {
+    const matchesReady =
+      !filters.readyForMap ||
+      filters.readyForMap === "todos" ||
+      (filters.readyForMap === "sim" ? property.readyForMap : !property.readyForMap);
+    const matchesPriority =
+      !filters.priorityReview || filters.priorityReview === "todos" || property.priorityReview === filters.priorityReview;
+    const matchesLocation =
+      !filters.locationStatus || filters.locationStatus === "todos" || property.locationStatus === filters.locationStatus;
+
+    return matchesReady && matchesPriority && matchesLocation;
+  });
 
   return properties.map((property) => ({
     id: property.id,
@@ -581,10 +749,14 @@ export async function getPublishedMapProperties(filters: PropertyFilters = {}): 
     title: property.title,
     neighborhoodId: property.neighborhoodId,
     neighborhoodName: property.neighborhoodName ?? "Nao mapeado",
+    neighborhoodSlug: property.neighborhoodSlug,
     status: property.status,
     criticality: property.criticality,
     lat: property.lat,
     lng: property.lng,
+    readyForMap: property.readyForMap ?? true,
+    priorityReview: property.priorityReview ?? "media",
+    locationStatus: property.locationStatus ?? "aproximada",
   }));
 }
 
@@ -603,6 +775,9 @@ export async function getPublishedMapFilterOptions() {
   return {
     statuses: ["todos", "ocupado", "vazio", "em-disputa", "uso-institucional"] as const,
     criticalities: ["todos", "alta", "media", "baixa"] as const,
+    readyForMap: ["todos", "sim", "nao"] as const,
+    priorityReviews: ["todos", "alta", "media", "baixa"] as const,
+    locationStatuses: ["todos", "confirmada", "aproximada", "ambigua", "pendente"] as const,
     neighborhoods: data ?? [],
   };
 }
@@ -620,10 +795,11 @@ export async function getPublishedNeighborhoodCount(): Promise<number> {
 
 export async function getPublishedNeighborhoodSummaries(): Promise<PublishedNeighborhoodSummary[]> {
   const supabase = await getSupabaseOrThrow();
-  const [neighborhoodsResult, properties, actions] = await Promise.all([
+  const [neighborhoodsResult, properties, actions, finalNeighborhoodStats] = await Promise.all([
     supabase.from("neighborhoods").select("id, slug, name, description").order("name", { ascending: true }),
     getPublishedProperties(),
     getPublishedActionFeed(),
+    getFinalNeighborhoodStats(),
   ]);
 
   if (neighborhoodsResult.error) {
@@ -636,6 +812,7 @@ export async function getPublishedNeighborhoodSummaries(): Promise<PublishedNeig
   const proofPropertyCounts = new Map<string, number>();
   const documentCounts = new Map<string, number>();
   const priorityPropertyCounts = new Map<string, number>();
+  const readyForMapCounts = new Map<string, number>();
   const propertyById = new Map(properties.map((property) => [property.id, property]));
 
   for (const property of properties) {
@@ -656,6 +833,10 @@ export async function getPublishedNeighborhoodSummaries(): Promise<PublishedNeig
     if (property.isPriority) {
       priorityPropertyCounts.set(property.neighborhoodId, (priorityPropertyCounts.get(property.neighborhoodId) ?? 0) + 1);
     }
+
+    if (property.readyForMap) {
+      readyForMapCounts.set(property.neighborhoodId, (readyForMapCounts.get(property.neighborhoodId) ?? 0) + 1);
+    }
   }
 
   for (const action of actions) {
@@ -669,12 +850,14 @@ export async function getPublishedNeighborhoodSummaries(): Promise<PublishedNeig
   }
 
   return (neighborhoodsResult.data ?? []).map((neighborhood) => {
-    const propertyCount = propertyCounts.get(neighborhood.id) ?? 0;
+    const finalStats = matchNeighborhoodStat(finalNeighborhoodStats, neighborhood.name);
+    const propertyCount = finalStats?.registros ?? propertyCounts.get(neighborhood.id) ?? 0;
     const criticalPropertyCount = criticalCounts.get(neighborhood.id) ?? 0;
     const openActionCount = actionCounts.get(neighborhood.id) ?? 0;
     const proofPropertyCount = proofPropertyCounts.get(neighborhood.id) ?? 0;
     const publicDocumentCount = documentCounts.get(neighborhood.id) ?? 0;
-    const priorityPropertyCount = priorityPropertyCounts.get(neighborhood.id) ?? 0;
+    const priorityPropertyCount = finalStats?.priorityCount ?? priorityPropertyCounts.get(neighborhood.id) ?? 0;
+    const readyForMapCount = finalStats?.readyForMapCount ?? readyForMapCounts.get(neighborhood.id) ?? 0;
 
     return {
       id: neighborhood.id,
@@ -687,6 +870,7 @@ export async function getPublishedNeighborhoodSummaries(): Promise<PublishedNeig
       proofPropertyCount,
       publicDocumentCount,
       priorityPropertyCount,
+      readyForMapCount,
       narrative: buildNeighborhoodNarrative(neighborhood.name, propertyCount, criticalPropertyCount, openActionCount, neighborhood.description ?? ""),
     };
   });
@@ -716,7 +900,7 @@ export async function getPublishedPropertyBundle(slug: string): Promise<Property
   const { data: propertyRow, error: propertyError } = await supabase
     .from("properties")
     .select(
-      "id, slug, title, address, neighborhood_id, excerpt, description, current_use, area_estimate, current_status, criticality, latitude, longitude, legal_notes, tags, neighborhoods(id, name, slug, description)",
+      "*, neighborhoods(id, name, slug, description)",
     )
     .eq("slug", slug)
     .eq("is_public", true)
@@ -733,7 +917,7 @@ export async function getPublishedPropertyBundle(slug: string): Promise<Property
   const property = mapProperty(propertyRow);
   const neighborhood = mapNeighborhood(propertyRow.neighborhoods);
 
-  const [imagesResult, documentsResult, timelineResult, actionsResult, proposalsResult, reportsResult] = await Promise.all([
+  const [imagesResult, documentsResult, timelineResult, actionsResult, proposalsResult, reportsResult, fiscalSignalsResult] = await Promise.all([
     supabase
       .from("property_images")
       .select("id, property_id, image_url, alt_text, caption, credit, storage_path, is_public, is_cover, position")
@@ -779,6 +963,12 @@ export async function getPublishedPropertyBundle(slug: string): Promise<Property
       .eq("editorial_destination", "relato_publico")
       .order("created_at", { ascending: false })
       .returns<PropertyReportRow[]>(),
+    supabase
+      .from("property_fiscal_signals")
+      .select("property_id, inscricao_imobiliaria, iptu_2019_lancado, iptu_2025_observado, valor_venal_estimado, valor_venal_status, confianca_valor_venal, localizacao_status_final, pronto_para_mapa, prioridade_revisao")
+      .or(`property_id.eq.${property.id}${property.inscricaoImobiliaria ? `,inscricao_imobiliaria.eq.${property.inscricaoImobiliaria}` : ""}`)
+      .limit(1)
+      .returns<PropertyFiscalSignalRow[]>(),
   ]);
 
   for (const result of [imagesResult, documentsResult, timelineResult, actionsResult, proposalsResult, reportsResult]) {
@@ -809,7 +999,12 @@ export async function getPublishedPropertyBundle(slug: string): Promise<Property
   );
 
   return {
-    property,
+    property: enrichTerritorialFields(
+      applyFiscalSignal(
+        applyFiscalSignal(property, fiscalSignalsResult.error ? undefined : fiscalSignalsResult.data?.[0]),
+        fiscalSignalsResult.error || !fiscalSignalsResult.data?.[0] ? await getFinalSignalForProperty(property) : undefined,
+      ),
+    ),
     neighborhood,
     images: resolvedImages.sort((left, right) => Number(!!right.isCover) - Number(!!left.isCover) || (left.position ?? 0) - (right.position ?? 0)),
     documents: resolvedDocuments,

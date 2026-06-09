@@ -379,3 +379,94 @@ export async function deletePropertyDocumentAction(formData: FormData) {
   revalidatePropertyMedia(propertyId, slug);
   redirect(`${target}?saved=1`);
 }
+
+export async function uploadQuickImageAction(formData: FormData) {
+  try {
+    const supabase = requireAdminClient();
+    const propertyId = getString(formData, "property_id");
+    const fileValue = formData.get("image_file");
+    const caption = getString(formData, "caption") || "Imagem editorial";
+    const credit = getString(formData, "credit") || null;
+    const isCover = getBoolean(formData, "is_cover");
+
+    if (!propertyId) {
+      return { success: false, error: "Imóvel inválido para upload." };
+    }
+
+    if (!(fileValue instanceof File) || fileValue.size === 0) {
+      return { success: false, error: "Envie um arquivo de imagem." };
+    }
+
+    const imageFile = fileValue as File;
+    if (!allowedImageMimeTypes.has(imageFile.type)) {
+      return { success: false, error: "Imagem precisa ser JPEG, PNG ou WebP." };
+    }
+
+    const { slug } = await getPropertySlugAndRedirectPaths(propertyId);
+    const storagePath = buildStoragePath("images", imageFile.name);
+    const arrayBuffer = await imageFile.arrayBuffer();
+    
+    const { error: uploadError } = await supabase.storage
+      .from(PROPERTY_IMAGE_BUCKET)
+      .upload(storagePath, new Uint8Array(arrayBuffer), {
+        contentType: imageFile.type,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return { success: false, error: uploadError.message };
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(PROPERTY_IMAGE_BUCKET).getPublicUrl(storagePath);
+    
+    // Check if a cover image exists
+    const { data: covers } = await supabase
+      .from("property_images")
+      .select("id")
+      .eq("property_id", propertyId)
+      .eq("is_cover", true)
+      .limit(1);
+    const coverExists = (covers ?? []).length > 0;
+
+    // Get next position
+    const { data: lastImg } = await supabase
+      .from("property_images")
+      .select("position")
+      .eq("property_id", propertyId)
+      .order("position", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const position = (lastImg?.position ?? -1) + 1;
+
+    const { data: inserted, error: insertError } = await supabase
+      .from("property_images")
+      .insert({
+        property_id: propertyId,
+        image_url: publicUrlData.publicUrl,
+        alt_text: caption,
+        caption: caption || null,
+        credit: credit || null,
+        storage_path: storagePath,
+        is_public: true,
+        is_cover: isCover || !coverExists,
+        position,
+      })
+      .select("*")
+      .single();
+
+    if (insertError || !inserted) {
+      await supabase.storage.from(PROPERTY_IMAGE_BUCKET).remove([storagePath]);
+      return { success: false, error: insertError?.message ?? "Falha ao criar registro da imagem." };
+    }
+
+    if (inserted.is_cover) {
+      await supabase.from("property_images").update({ is_cover: false }).eq("property_id", propertyId).neq("id", inserted.id);
+    }
+
+    revalidatePropertyMedia(propertyId, slug);
+    return { success: true, image: inserted };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido no upload.";
+    return { success: false, error: message };
+  }
+}

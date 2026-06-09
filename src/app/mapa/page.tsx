@@ -12,6 +12,9 @@ interface MapPageProps {
     status?: string;
     criticidade?: string;
     bairro?: string;
+    pronto?: string;
+    revisao?: string;
+    localizacao?: string;
     imovel?: string;
     from?: string;
   }>;
@@ -50,7 +53,7 @@ export default async function MapPage({ searchParams }: MapPageProps) {
   return (
     <div className="mx-auto max-w-[1600px] space-y-2.5 px-3 py-3 sm:px-4 lg:px-5 lg:py-4">
       <PanelCard
-        className="border-steel/30 bg-[linear-gradient(135deg,rgba(101,126,140,0.16),rgba(26,31,35,0.94))] px-3 py-3 sm:px-4 sm:py-3"
+        className="tt-surface-solid px-3 py-3 sm:px-4 sm:py-3"
         contentClassName="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1fr)_minmax(300px,420px)_auto] xl:items-center"
       >
         <SectionHeader

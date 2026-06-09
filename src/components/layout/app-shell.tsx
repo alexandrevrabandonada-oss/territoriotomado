@@ -1,14 +1,16 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, Compass, LogIn, Map, Send, Shield } from "lucide-react";
+import { Building2, Compass, LogIn, Map, Megaphone, Shield } from "lucide-react";
 import { cn } from "@/lib/utils/cn";
 
 const desktopNavigation = [
   { href: "/mapa", label: "Mapa" },
   { href: "/imoveis", label: "Imoveis" },
   { href: "/bairros", label: "Bairros" },
+  { href: "/circulacao", label: "Circulacao" },
   { href: "/agir", label: "Agir" },
   { href: "/enviar", label: "Enviar" },
   { href: "/admin", label: "Admin" },
@@ -18,8 +20,8 @@ const mobileNavigation = [
   { href: "/mapa", label: "Mapa", icon: Map },
   { href: "/imoveis", label: "Imoveis", icon: Building2 },
   { href: "/bairros", label: "Bairros", icon: Compass },
+  { href: "/circulacao", label: "Cards", icon: Megaphone },
   { href: "/agir", label: "Agir", icon: Shield },
-  { href: "/enviar", label: "Enviar", icon: Send },
 ];
 
 interface AppShellProps {
@@ -48,8 +50,16 @@ export function AppShell({ children }: AppShellProps) {
         <div className="mx-auto flex max-w-[1500px] flex-col gap-3 px-4 py-3 sm:px-6 lg:flex-row lg:items-stretch lg:justify-between lg:gap-6 lg:px-10 lg:py-0">
           <div className="flex items-center py-1.5 lg:py-2.5">
             <Link href="/" className="inline-flex items-center gap-3 text-paper">
-              <span className="inline-flex h-12 w-12 items-center justify-center border border-signal/75 bg-[linear-gradient(145deg,rgba(255,215,106,0.16),rgba(255,255,255,0.04))] text-xs font-black uppercase tracking-[0.22em] text-signal shadow-[inset_0_1px_0_rgba(255,255,255,0.18),0_0_28px_rgba(233,173,18,0.1)] backdrop-blur-xl">
-                TT
+              <span className="relative inline-flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden border border-signal/55 bg-[linear-gradient(145deg,rgba(255,215,106,0.12),rgba(255,255,255,0.04))] shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_0_28px_rgba(233,173,18,0.1)] backdrop-blur-xl">
+                <Image
+                  src="/brand/territorio-symbol.png"
+                  alt=""
+                  width={56}
+                  height={58}
+                  priority
+                  sizes="56px"
+                  className="h-full w-full object-cover object-[50%_42%]"
+                />
               </span>
               <span>
                 <span className="block font-display text-2xl uppercase leading-none tracking-[0.14em] sm:text-3xl">Territorio Tomado</span>

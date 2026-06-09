@@ -54,9 +54,8 @@ export default function Image() {
             <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
               <div
                 style={{
-                  display: "inline-flex",
+                  display: "flex",
                   alignItems: "center",
-                  width: "fit-content",
                   border: "1px solid rgba(211, 217, 213, 0.24)",
                   background: "rgba(70, 84, 93, 0.78)",
                   color: "#ffd76a",

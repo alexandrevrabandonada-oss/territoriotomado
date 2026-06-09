@@ -34,7 +34,10 @@ export function PropertyEditorForm({ action, options, property, redirectTo, head
           <p className="text-xs uppercase tracking-[0.22em] text-signal">{heading}</p>
           <p className="text-sm text-paper/65">Preenchimento direto, sem camadas extras de CMS.</p>
         </div>
-        <Badge tone={isPublic ? "default" : "muted"}>{isPublic ? "publicado" : "rascunho"}</Badge>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Badge tone={property?.inscricaoImobiliaria ? "blue" : "rust"}>{property?.inscricaoImobiliaria ? "vinculo oficial" : "sem inscricao"}</Badge>
+          <Badge tone={isPublic ? "default" : "muted"}>{isPublic ? "publicado" : "rascunho"}</Badge>
+        </div>
       </div>
 
       {notice ? <div className="border border-signal/35 bg-signal/8 px-4 py-3 text-sm text-paper/80">{notice}</div> : null}
@@ -51,6 +54,26 @@ export function PropertyEditorForm({ action, options, property, redirectTo, head
         <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65 lg:col-span-2">
           Endereco
           <input name="address" defaultValue={property?.address ?? ""} className="w-full border border-paper/10 bg-ink px-4 py-3 text-sm text-paper outline-none focus:border-signal" required />
+        </label>
+        <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65 lg:col-span-2">
+          inscricao_imobiliaria oficial
+          <input
+            name="inscricao_imobiliaria"
+            list="fiscal-signal-options"
+            defaultValue={property?.inscricaoImobiliaria ?? ""}
+            className="w-full border border-paper/10 bg-ink px-4 py-3 text-sm text-paper outline-none focus:border-signal"
+            placeholder="ex.: 1.110.0007/000-0"
+          />
+          <datalist id="fiscal-signal-options">
+            {options.fiscalSignals.map((signal) => (
+              <option key={signal.inscricao} value={signal.inscricao}>
+                {`${signal.bairro} - ${signal.endereco}${signal.propertyId && signal.propertyId !== property?.id ? " - ja vinculado" : ""}`}
+              </option>
+            ))}
+          </datalist>
+          <span className="block text-[11px] normal-case leading-5 tracking-normal text-paper/48">
+            Use a inscricao da base fiscal final. Corrigir este campo faz ficha, mapa, revisao e circulacao priorizarem o mesmo registro remoto.
+          </span>
         </label>
         <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65">
           Bairro
@@ -102,6 +125,35 @@ export function PropertyEditorForm({ action, options, property, redirectTo, head
             ))}
           </select>
         </label>
+        <div className="grid gap-4 lg:col-span-2 lg:grid-cols-3">
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65">
+            localizacao_status_final
+            <select name="localizacao_status_final" defaultValue={property?.locationStatus ?? ""} className="w-full border border-paper/10 bg-ink px-4 py-3 text-sm text-paper outline-none focus:border-signal">
+              <option value="">derivar automaticamente</option>
+              <option value="confirmada">confirmada</option>
+              <option value="aproximada">aproximada</option>
+              <option value="ambigua">ambigua</option>
+              <option value="pendente">pendente</option>
+            </select>
+          </label>
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65">
+            pronto_para_mapa
+            <select name="pronto_para_mapa" defaultValue={typeof property?.readyForMap === "boolean" ? (property.readyForMap ? "sim" : "nao") : ""} className="w-full border border-paper/10 bg-ink px-4 py-3 text-sm text-paper outline-none focus:border-signal">
+              <option value="">derivar automaticamente</option>
+              <option value="sim">sim</option>
+              <option value="nao">nao</option>
+            </select>
+          </label>
+          <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65">
+            prioridade_revisao
+            <select name="prioridade_revisao" defaultValue={property?.priorityReview ?? ""} className="w-full border border-paper/10 bg-ink px-4 py-3 text-sm text-paper outline-none focus:border-signal">
+              <option value="">derivar automaticamente</option>
+              <option value="alta">alta</option>
+              <option value="media">media</option>
+              <option value="baixa">baixa</option>
+            </select>
+          </label>
+        </div>
         <label className="space-y-2 text-xs font-semibold uppercase tracking-[0.16em] text-paper/65 lg:col-span-2">
           Resumo
           <textarea name="excerpt" defaultValue={property?.excerpt ?? ""} rows={3} className="w-full border border-paper/10 bg-ink px-4 py-3 text-sm text-paper outline-none focus:border-signal" required />
