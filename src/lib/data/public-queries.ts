@@ -551,6 +551,12 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
   }
 
   const propertyIds = properties.map((property) => property.id);
+  const inscricoesList = properties
+    .map((p) => p.inscricaoImobiliaria)
+    .filter((x): x is string => Boolean(x))
+    .map((x) => `"${x}"`)
+    .join(",");
+
   const [actionsResult, documentsResult, imagesResult, reportsResult, fiscalSignalsResult] = await Promise.all([
     supabase
       .from("property_actions")
@@ -576,7 +582,7 @@ export async function getPublishedProperties(filters: PropertyFilters = {}): Pro
     supabase
       .from("property_fiscal_signals")
       .select("property_id, inscricao_imobiliaria, iptu_2019_lancado, iptu_2025_observado, valor_venal_estimado, valor_venal_status, confianca_valor_venal, localizacao_status_final, pronto_para_mapa, prioridade_revisao")
-      .or(`property_id.in.(${propertyIds.join(",")}),inscricao_imobiliaria.in.(${properties.map((property) => property.inscricaoImobiliaria).filter(Boolean).join(",") || "__none__"})`)
+      .or(`property_id.in.(${propertyIds.join(",")}),inscricao_imobiliaria.in.(${inscricoesList || '"__none__"'})`)
       .returns<PropertyFiscalSignalRow[]>(),
   ]);
 
@@ -966,7 +972,7 @@ export async function getPublishedPropertyBundle(slug: string): Promise<Property
     supabase
       .from("property_fiscal_signals")
       .select("property_id, inscricao_imobiliaria, iptu_2019_lancado, iptu_2025_observado, valor_venal_estimado, valor_venal_status, confianca_valor_venal, localizacao_status_final, pronto_para_mapa, prioridade_revisao")
-      .or(`property_id.eq.${property.id}${property.inscricaoImobiliaria ? `,inscricao_imobiliaria.eq.${property.inscricaoImobiliaria}` : ""}`)
+      .or(`property_id.eq.${property.id}${property.inscricaoImobiliaria ? `,inscricao_imobiliaria.eq."${property.inscricaoImobiliaria}"` : ""}`)
       .limit(1)
       .returns<PropertyFiscalSignalRow[]>(),
   ]);
